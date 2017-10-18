@@ -53,6 +53,7 @@ public:
 
     void push(key_type key, value_type val)
     {
+        //TODO implement last_ minimum functionality to ensure monotonicity
         ++size_;
         q.push(key);
     };
