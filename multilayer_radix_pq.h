@@ -10,61 +10,81 @@
 #ifndef MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H_H
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H_H
 
-template<typename KeyType, typename ValueType>
-class N_queue
+
+class Q
 {
-public:
-    using key_type = KeyType;
-    using value_type = ValueType;
-    using TPair = std::pair<key_type, value_type>;
-    using VTPairs = std::vector<TPair>;
-
+    using index_type = std::pair<int, int>;
 private:
-    int size_;
-    key_type min_ = std::numeric_limits<key_type>::max();
-    //TODO: Clarify whether std::greater<std::pair<K, V>> sorts by first value or by combination? Of latter, write custom Comparator.
-    std::priority_queue<key_type, VTPairs, std::greater<TPair>> q;
-
+    std::priority_queue<int, std::vector<index_type>, std::greater<index_type>> pq_;
 public:
-
-    N_queue() : size_(0){};
-
-    int size() const
+    void push(index_type index)
     {
-        return size_;
+        pq_.push(index);
+    }
+
+    index_type pop()
+    {
+        index_type min = pq_.top();
+        pq_.pop();
+        return min;
     }
 
     bool empty() const
     {
-        return (size_ <= 0);
-    }
-    //TODO: find out if pass by reference is actually more efficient
-    void push(const key_type& key, const value_type& val)
-    {
-        assert(key <= min_);
-        ++size_;
-        q.push(std::move(std::pair<key_type, value_type>(key, val)));
-
-    };
-
-    void pop()
-    {
-        min_ = q.top().first;
-        q.pop();
-        --size_;
+        return pq_.empty();
     }
 
-    key_type min() const
+    index_type min()
     {
-        return q.top().first;
+        return pq_.top();
     }
 
-    value_type minVale() const {return q.top().second;}
+    unsigned long size()
+    {
+        return pq_.size();
+    }
+
+    void clear()
+    {
+        while(!pq_.empty())
+        {
+            pq_.pop();
+        }
+        std::cout << "q cleared" << std::endl;
+    }
 
 };
 
 
 //TODO: Datastructure buckets, enclosing datastructure multilayer_radix_pq using Nqueue and buckets
+
+
+template <typename KeyType, typename ValueType>
+class bucket
+{
+public:
+    using key_type = KeyType;
+    using value_type = ValueType;
+private:
+    stxxl::vector<std::pair<key_type, value_type>> v_;
+
+
+public:
+
+    bool empty() const {
+        return v_.empty();
+    }
+
+    void push(const key_type& key, const value_type& val)
+    {
+        v_.push_back(std::pair<key_type, value_type> (key, val));
+    }
+
+    void clear(){
+        v_.clear();
+    }
+
+};
 
 
 

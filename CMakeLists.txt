@@ -8,7 +8,8 @@ set(CMAKE_BUILD_TYPE Debug)
 #add_subdirectory(stxxl)
 
 #set(STXXL_DIR "cmake-build-debug/stxxl")
-set(STXXL_DIR "/home/ndrshrzg/Documents/stxxl/build")
+set(STXXL_DIR "/home/ndrshrzg/stxxl-1.4.1/build")
+#set(STXXL_DIR "/home/ndrshrzg/Documents/stxxl/build")
 
 find_package(STXXL REQUIRED)
 
