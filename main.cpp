@@ -1,6 +1,6 @@
 #include <iostream>
-#include "multilayer_radix_pq.h"
-#include "templated_priority_queue.h"
+#include "include/multilayer_radix_pq.h"
+#include "include/templated_priority_queue.h"
 
 void templated_priority_queue_test();
 
