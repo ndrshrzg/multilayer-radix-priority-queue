@@ -1,30 +1,20 @@
 cmake_minimum_required(VERSION 3.8)
 project(multilayer_radix_priority_queue)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTXXL_PARALLEL=1")
 
-set(CMAKE_BUILD_TYPE Debug)
+#include STXXL
+SET(TMP_CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
+SET(CMAKE_BUILD_TYPE "RelWithDebInfo")
+add_subdirectory(libs/stxxl/)
+SET(CMAKE_BUILD_TYPE "${TMP_CMAKE_BUILD_TYPE}")
 
-#add_subdirectory(stxxl)
-
-#set(STXXL_DIR "cmake-build-debug/stxxl")
-set(STXXL_DIR "/home/ndrshrzg/stxxl-1.4.1/build")
-#set(STXXL_DIR "/home/ndrshrzg/Documents/stxxl/build")
-
-find_package(STXXL REQUIRED)
-
-# print some info (this can be removed)
-message(STATUS "STXXL_CXX_FLAGS: ${STXXL_CXX_FLAGS}")
-message(STATUS "STXXL_INCLUDE_DIRS: ${STXXL_INCLUDE_DIRS}")
-message(STATUS "STXXL_LIBRARIES: ${STXXL_LIBRARIES}")
-
-# apply CXXFLAGS to our configuration
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STXXL_CXX_FLAGS}")
-
-# add STXXL include directory
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=10000")
 include_directories(${STXXL_INCLUDE_DIRS})
 
-# create and executable and linke with STXXL
+set(CMAKE_CXX_FLAGS_DEBUG   "${CMAKE_CXX_FLAGS_DEBUG}   -DSTXXL_VERBOSE_LEVEL=1")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DSTXXL_VERBOSE_LEVEL=0")
 
 
 set(SOURCE_FILES main.cpp multilayer_radix_pq.h)

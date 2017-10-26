@@ -1,53 +1,40 @@
 #include <iostream>
-#include <stxxl/vector>
 #include "multilayer_radix_pq.h"
+#include "templated_priority_queue.h"
 
-void TestQ(Q &q);
-void TestBucket(bucket<int, std::string> &b);
+void templated_priority_queue_test();
 
 int main() {
-    bucket<int, std::string> b;
-    Q q;
 
-    TestQ(q);
-    //TestBucket(b);
+    //templated_priority_queue_test();
 
+    multilayer_radix_pq<int, std::string> (64, 8);
     return 0;
 }
 
-void TestBucket(bucket<int, std::string> &b)
-{
-    std::cout << "Testing bucket" << std::endl;
-    std::cout << "Is empty" << std::endl;
-    std::cout << b.empty() << std::endl;
+void templated_priority_queue_test() {
+    templated_priority_queue<int, std::__cxx11::string> nq;
 
-    b.push(5, "five");
-    b.push(8, "eight");
-    std::cout << "Is empty" << std::endl;
-    std::cout << b.empty() << std::endl;
+    std::cout << "Is empty: " << nq.empty() << std::endl;
 
-}
+    nq.push(3, "three");
+    nq.push(5, "five");
+    nq.push(7, "seven");
+    nq.push(9, "nine");
+    nq.push(8, "eight");
 
-void TestQ(Q &q) {
-    std::cout << "Testing Q" << std::endl;
-    std::cout << "Is empty: " << q.empty() << std::endl;
+    std::cout << "Size is: " << nq.size() << std::endl;
+    std::cout << "Minimum is: " << nq.min() << std::endl;
+    std::cout << "Value of Minimum is: " << nq.minVale() << std::endl;
 
-    q.push(std::pair<int, int>(1,2));
-    q.push(std::pair<int, int>(1,1));
-    q.push(std::pair<int, int>(3,2));
-    q.push(std::pair<int, int>(6,4));
+    nq.pop();
+    //nq.push(6, "six"); // monotonicity after first pop
 
-    std::cout << "Size is: " << q.size() << std::endl;
-    std::cout << "Minimum is: " << q.min().first << ", " << q.min().second << std::endl;
 
-    q.pop();
+    std::cout << "Size is: " << nq.size() << std::endl;
+    std::cout << "Minimum is: " << nq.min() << std::endl;
+    std::cout << "Value of Minimum is: " << nq.minVale() << std::endl;
 
-    std::cout << "Size is: " << q.size() << std::endl;
-    std::cout << "Minimum is: " << q.min().first << ", " << q.min().second << std::endl;
 
-    q.pop();
-    std::cout << "Minimum is: " << q.min().first << ", " << q.min().second << std::endl;
-
-    q.clear();
-    std::cout << "Is empty: " << q.empty() << std::endl;
+    std::cout << "Is empty: " << nq.empty() << std::endl;
 }
