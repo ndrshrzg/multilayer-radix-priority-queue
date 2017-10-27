@@ -30,38 +30,51 @@ public:
     using value_type = ValueType;
     using block_type = stxxl::queue<std::pair<key_type, value_type>>;
 
-
 private:
-    //TODO Bitvector member
+    const int r_;
 
-    const double C_;
-    const double r_;
-
-    constexpr int calculateH(double i, double r)
-    {
-        return (ceil(log(i)/log(r)));
-    }
-    //TODO Array needs to be sized according to calculation of H
-    std::array<std::vector<block_type>, 5> buckets_;
-
-    //std::array<std::vector<block_type>, calculateH(C_, r_)> buckets_;
+    static const int len = std::numeric_limits<key_type>::digits;
+    //TODO at the moment this is just an array of queues, change to an array<T, len> with T = array<block_type, r_>
+    std::array<block_type, len> buckets_;
+    std::array<bool, len> bucket_flags_;
 
 public:
-    multilayer_radix_pq(int C, int r) : C_(C), r_(r)
+    multilayer_radix_pq(int r) : r_(r)
     {
-        std::cout << "H: " << ceil(log(C)/log(r)) << std::endl;
-        std::cout << "r: " << r_ << std::endl;
+        std::cout << "Len of type: " << len << std::endl;
+        bucket_flags_.fill(0);
     };
 
     void push(key_type key, value_type val)
     {
-        //TODO calculate bucket, [i][j] instead of [0][0]
-        buckets_[0].at(0).push(std::pair<key_type, value_type >(key, val));
+        //TODO calculate bucket, [i] instead of [0]
+        int i = calculateBucket(key);
+        std::cout << "calculated bucket for key: " << key << " is: " << i << std::endl;
+        bucket_flags_[i] = 1;
+        buckets_[i].push(std::pair<key_type, value_type>(key, val));
+    }
+    bool empty()
+    {
+        return buckets_[0].empty();
     }
 
     void testInternal()
     {
-        std::cout << sizeof(buckets_[0].at(0)) << std::endl;
+        std::cout << "Size of buckets_: " << sizeof(buckets_) << std::endl;
+        std::cout << buckets_[0].empty() << std::endl;
+        std::cout << buckets_[63].empty() << std::endl;
+        std::cout << buckets_[64].empty() << std::endl; // no out of range error!
+
+    }
+
+private:
+    int calculateBucket(key_type key)
+    {
+        //TODO calculate key in base r_
+        // find least significant bit different from min in base r, return index of lsb and value as pair
+        // so res.first is bucket index, res.second is block index
+        int res = key % len;
+        return res;
     }
 
 
