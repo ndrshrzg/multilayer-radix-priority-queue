@@ -2,9 +2,11 @@
 // Created by ndrshrzg on 10/26/17.
 //
 
-#include <stxxl/queue>
+//#include <stxxl/queue>
 #include <vector>
+#include <array>
 #include <cmath>
+#include <limits>
 
 #ifndef MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
@@ -37,31 +39,33 @@ namespace multilayer_radix_pq {
     class multilayer_radix_pq {
     public:
         //limiting the queue size to avoid memory overflow
-        static constexpr auto block_size = size_t(1) << 18;
+        //static constexpr auto block_size = size_t(1) << 18; // deprecated for nostxxl branch
         using key_type = KeyType;
         using value_type = ValueType;
-        using block_type = stxxl::queue<std::pair<key_type, value_type>, block_size>;
+        //using block_type = stxxl::queue<std::pair<key_type, value_type>, block_size>; // deprecated for nostxxl branch
+        using block_type = std::vector<std::pair<key_type, value_type>>;
     private:
         static const int len = std::numeric_limits<key_type>::digits;
-        static const size_t NoOfQueues = radix*ceil(len/log2(radix));
+        static const size_t no_of_queues = radix*ceil(len/log2(radix));
         int C_;
-        uint64_t last_;
-        std::array<std::array<block_type, NoOfQueues>, len> buckets_;
-        std::array<bool, len> bucket_flags_;
+        std::vector<uint64_t> array_last_;
+        std::array<std::array<block_type, no_of_queues>, len> buckets_;
+        std::array<bool, len> bucket_empty_flags_;
 
     public:
-        multilayer_radix_pq(int C) : C_(C), last_(){//}, buckets_() {
-            bucket_flags_.fill(0);
-            std::cout << NoOfQueues << std::endl;
+        multilayer_radix_pq(int C) : C_(C){//, array_last_(){//}, buckets_() {
+            bucket_empty_flags_.fill(0);
+            std::cout << no_of_queues << std::endl;
         };
 
         void push(key_type key, value_type val) {
             // TODO replace reinterpret_cast<>(key) with encoder
             // TODO special case of N bucket
-            std::pair<uint64_t, uint64_t> pos = internal::calculateBucket(reinterpret_cast<uint64_t>(key), last_, radix);
-            bucket_flags_[pos.first] = 1;
+            // TODO implement last
+            std::pair<uint64_t, uint64_t> pos = internal::calculateBucket(reinterpret_cast<uint64_t>(key), 0, radix);
+            bucket_empty_flags_[pos.first] = 1;
             std::cout << "Pushing into B(" << pos.first << ", " << pos.second << ")." << std::endl;
-            buckets_[pos.first].at(pos.second).push(std::pair<key_type, value_type>(key, val));
+            buckets_[pos.first].at(pos.second).push_back(std::pair<key_type, value_type>(key, val));
         }
 
         bool empty() {
