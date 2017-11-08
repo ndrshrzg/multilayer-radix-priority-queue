@@ -9,9 +9,6 @@
 #ifndef MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 
-
-
-
 //TODO: Datastructure buckets, enclosing datastructure multilayer_radix_pq using Nqueue and buckets
 /// Outline:
 ///  Bitvector of size h (limited by C in base r?) indicating whether bucket is empty
@@ -24,46 +21,52 @@
 namespace multilayer_radix_pq {
 
     namespace internal {
-        static constexpr std::pair<size_t, size_t> calculateBucket(uint64_t key, uint64_t last, uint64_t r)
+        static constexpr std::pair<size_t, size_t> calculateBucket(uint64_t key, uint64_t last, size_t r)
         {
             //Left very explicit for now to debug
             size_t index_least_significant = (std::numeric_limits<uint64_t>::digits - __builtin_clzll(key ^ last)) - 1;
-            size_t i = static_cast<size_t>(ceil(index_least_significant / r));
-            size_t shift = r*i;
-            size_t j = (key >> shift+1);
-            // Index is limited to 16 at the moment since instantiating more stxxl::queues crashes the system
-            assert(j <= 16);
+            size_t i = static_cast<size_t>(floor(index_least_significant / log2(r)));
+            size_t shift = log2(r)*i;
+            size_t j = (key >> shift);
             return std::pair<size_t, size_t>(i,j);
         };
     }; // end of namespace internal
 
 
-    template<typename KeyType, typename ValueType>//, size_t radix>
+    template<typename KeyType, typename ValueType, size_t radix>
     class multilayer_radix_pq {
     public:
+        //limiting the queue size to avoid memory overflow
+        static constexpr auto block_size = size_t(1) << 18;
         using key_type = KeyType;
         using value_type = ValueType;
-        using block_type = stxxl::queue<std::pair<key_type, value_type>>;
+        using block_type = stxxl::queue<std::pair<key_type, value_type>, block_size>;
     private:
-        int r_, C_, last_;
         static const int len = std::numeric_limits<key_type>::digits;
-        std::array<std::array<block_type, 16>, len> buckets_;
+        static const size_t NoOfQueues = radix*ceil(len/log2(radix));
+        int C_;
+        uint64_t last_;
+        std::array<std::array<block_type, NoOfQueues>, len> buckets_;
         std::array<bool, len> bucket_flags_;
 
     public:
-        multilayer_radix_pq(int r, int C) : r_(r), C_(C), last_(), buckets_() {
+        multilayer_radix_pq(int C) : C_(C), last_(){//}, buckets_() {
             bucket_flags_.fill(0);
+            std::cout << NoOfQueues << std::endl;
         };
 
         void push(key_type key, value_type val) {
-            std::pair<uint64_t, uint64_t> pos = internal::calculateBucket(key, last_, r_);
+            // TODO replace reinterpret_cast<>(key) with encoder
+            // TODO special case of N bucket
+            std::pair<uint64_t, uint64_t> pos = internal::calculateBucket(reinterpret_cast<uint64_t>(key), last_, radix);
             bucket_flags_[pos.first] = 1;
             std::cout << "Pushing into B(" << pos.first << ", " << pos.second << ")." << std::endl;
             buckets_[pos.first].at(pos.second).push(std::pair<key_type, value_type>(key, val));
         }
 
         bool empty() {
-            return buckets_[0].empty();
+            //TODO not working since blocks are intialized and buckets_ therefore not empty
+            return buckets_.empty();
         }
 
     };
