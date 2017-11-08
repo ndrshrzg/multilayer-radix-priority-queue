@@ -7,6 +7,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <iterator>
 
 #ifndef MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
@@ -23,19 +24,18 @@
 namespace multilayer_radix_pq {
 
     namespace internal {
-        static constexpr std::pair<size_t, size_t> calculateBucket(uint64_t key, uint64_t last, size_t r)
-        {
+        static constexpr std::pair<size_t, size_t> calculateBucket(uint64_t key, uint64_t last, size_t r) {
             //Left very explicit for now to debug
             size_t index_least_significant = (std::numeric_limits<uint64_t>::digits - __builtin_clzll(key ^ last)) - 1;
             size_t i = static_cast<size_t>(floor(index_least_significant / log2(r)));
-            size_t shift = log2(r)*i;
+            size_t shift = log2(r) * i;
             size_t j = (key >> shift);
-            return std::pair<size_t, size_t>(i,j);
+            return std::pair<size_t, size_t>(i, j);
         };
     }; // end of namespace internal
 
 
-    template<typename KeyType, typename ValueType, size_t radix>
+    template<typename KeyType, typename ValueType, size_t RADIX_BITS>
     class multilayer_radix_pq {
     public:
         //limiting the queue size to avoid memory overflow
@@ -46,14 +46,16 @@ namespace multilayer_radix_pq {
         using block_type = std::vector<std::pair<key_type, value_type>>;
     private:
         static const int len = std::numeric_limits<key_type>::digits;
-        static const size_t no_of_queues = radix*ceil(len/log2(radix));
+        static const size_t radix = size_t(1) << RADIX_BITS;
+        static const size_t no_of_queues = radix * ceil(len / log2(radix));
         int C_;
+        uint64_t last_ = std::numeric_limits<key_type>::min();
         std::vector<uint64_t> array_last_;
         std::array<std::array<block_type, no_of_queues>, len> buckets_;
         std::array<bool, len> bucket_empty_flags_;
 
     public:
-        multilayer_radix_pq(int C) : C_(C){//, array_last_(){//}, buckets_() {
+        multilayer_radix_pq(int C) : C_(C) {//, array_last_(){//}, buckets_() {
             bucket_empty_flags_.fill(0);
             std::cout << no_of_queues << std::endl;
         };
@@ -62,11 +64,33 @@ namespace multilayer_radix_pq {
             // TODO replace reinterpret_cast<>(key) with encoder
             // TODO special case of N bucket
             // TODO implement last
-            std::pair<uint64_t, uint64_t> pos = internal::calculateBucket(reinterpret_cast<uint64_t>(key), 0, radix);
+            std::pair<uint64_t, uint64_t> pos = internal::calculateBucket(reinterpret_cast<uint64_t>(key), last_,
+                                                                          radix);
             bucket_empty_flags_[pos.first] = 1;
             std::cout << "Pushing into B(" << pos.first << ", " << pos.second << ")." << std::endl;
             buckets_[pos.first].at(pos.second).push_back(std::pair<key_type, value_type>(key, val));
         }
+
+        void pop() {
+            //TODO get elem from first non empty bucket, update last_ and reorganize elems in bucket
+            return;
+        }
+
+        key_type top() {
+            //TODO get minimum element without removing it, no update to last_ and no reorganization
+            //std::cout << "Empty bucket from end:" << std::endl;
+            //std::copy(std::begin(bucket_empty_flags_), std::end(bucket_empty_flags_), std::ostream_iterator<bool>(std::cout, " "));
+            //std::cout << std::endl;
+            for (int i = 0; i <= len; i++) {
+                if (bucket_empty_flags_[i]) {
+                    std::cout << "first non empty bucket found: " << i << std::endl;
+                    //TODO find first non empty block, implement block_empty_array for every bucket?
+                    return i;
+                }
+            }
+
+        }
+
 
         bool empty() {
             //TODO not working since blocks are intialized and buckets_ therefore not empty
