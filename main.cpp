@@ -14,6 +14,6 @@ int main() {
     mlrq.push(9087, x);
     mlrq.push(pow(2,11) + pow(2,9), x);
     std::cout << "Is empty: " << mlrq.empty() << std::endl;
-    mlrq.top();
+    std::cout << "First non empty Bucket: " << mlrq.top().first << ", " << mlrq.top().second << std::endl;
     return 0;
 }
