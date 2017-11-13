@@ -60,7 +60,6 @@ namespace multilayer_radix_pq {
         explicit multilayer_radix_pq(int C) : C_(C) {//, array_last_(){//}, buckets_() {
             bucket_empty_flags_ = {};
             last_minimum_ = std::numeric_limits<key_type>::min();
-            std::cout << no_of_queues << std::endl;
         };
 
         void push(key_type key, value_type val) {
@@ -97,6 +96,10 @@ namespace multilayer_radix_pq {
 
         bool empty() {
             return (top() == std::pair<int,int>(-1, -1));
+        }
+
+        bool bucketEmpty(int k){
+            return !bucket_empty_flags_[k].first;
         }
 
     };

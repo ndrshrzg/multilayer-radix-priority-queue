@@ -8,12 +8,12 @@ typedef struct data
 
 int main() {
     data x;
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, DATA, 3> mlrq(4096);
-    mlrq.push(8, x);
-    mlrq.push(pow(2,7), x);
-    mlrq.push(9087, x);
-    mlrq.push(pow(2,11) + pow(2,9), x);
-    std::cout << "Is empty: " << mlrq.empty() << std::endl;
-    std::cout << "First non empty Bucket: " << mlrq.top().first << ", " << mlrq.top().second << std::endl;
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, DATA, 3> mlrpq(4096);
+    mlrpq.push(8, x);
+    mlrpq.push(pow(2,7), x);
+    mlrpq.push(9087, x);
+    mlrpq.push(pow(2,11) + pow(2,9), x);
+    std::cout << "Is empty: " << mlrpq.empty() << std::endl;
+    std::cout << "First non empty Bucket: " << mlrpq.top().first << ", " << mlrpq.top().second << std::endl;
     return 0;
 }

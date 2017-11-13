@@ -5,18 +5,40 @@
 #include "gtest/gtest.h"
 #include "../include/multilayer_radix_pq.h"
 
-TEST(mlrqTest, EmptyWithoutPush){
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 3> mlrq(4096);
+//TODO create a test fixture to avoid code duplication
 
-    bool res = mlrq.empty();
+TEST(mlrpqTest, EmptyWithoutPush){
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 3> mlrpq(4096);
+
+    bool res = mlrpq.empty();
 
     ASSERT_EQ(true, res);
 }
 
-TEST(mlrqTest, NotEmptyAfterPush){
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 3> mlrq(4096);
-    mlrq.push(uint64_t(pow(2,0)),1);
-    bool res = mlrq.empty();
+TEST(mlrpqTest, NotEmptyAfterPush){
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 3> mlrpq(4096);
+    mlrpq.push(uint64_t(pow(2,0)),1);
+    bool res = mlrpq.empty();
 
     ASSERT_EQ(false, res);
+}
+
+TEST(mlrpqTest, TopReturnsMinimumElement){
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 3> mlrpq(4096);
+    mlrpq.push(uint64_t(pow(2,0)),1);
+    mlrpq.push(uint64_t(pow(2,1)),1);
+
+    std::pair<int, int> res = mlrpq.top();
+    std::pair<int, int> exp(0,1);
+    ASSERT_EQ(exp, res);
+}
+
+TEST(mlrpqTest, CalculateBucket){
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 3> mlrpq(4096);
+    mlrpq.push(uint64_t(pow(2,7)+pow(2,8)),1);
+
+    bool res = mlrpq.bucketEmpty(2);
+
+    ASSERT_EQ(false, res);
+
 }
