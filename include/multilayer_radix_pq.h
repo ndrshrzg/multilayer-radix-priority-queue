@@ -21,6 +21,9 @@
 ///  will fit in internal memory
 
 
+//TODO methods only reading should be constexpr
+
+
 namespace multilayer_radix_pq {
 
     namespace internal {
@@ -67,6 +70,7 @@ namespace multilayer_radix_pq {
     private:
         static const int len = std::numeric_limits<key_type>::digits;
         static const size_t radix = size_t(1) << RADIX_BITS;
+        //TODO rewrite to calculate from C
         static const size_t no_of_queues = static_cast<size_t>(radix * ceil(len / log2(radix)));
         int C_;
         key_type last_minimum_;
@@ -91,6 +95,8 @@ namespace multilayer_radix_pq {
         }
 
         std::pair<key_type, value_type> pop() {
+            //TODO new round after empty normal queue and special N bucket contains elements
+            /// calculate threshold that decides if elements larger than C are pushed into N
             // find position of first non empty bucket
             std::pair<int, int> pos_minimum_element_ = top();
             // if B(0, m0) empty
