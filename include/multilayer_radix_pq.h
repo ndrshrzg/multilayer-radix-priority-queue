@@ -20,6 +20,7 @@
 ///  As pointed out in the paper the bitvector (priority queue in paper) and buckets (disk pages)
 ///  will fit in internal memory
 
+//TODO changing radix bits to anything > 3 completely screws everyhting up, needs to be fixed first!
 
 //TODO methods only reading should be constexpr
 
@@ -72,33 +73,75 @@ namespace multilayer_radix_pq {
         static const size_t radix = size_t(1) << RADIX_BITS;
         static const size_t no_of_queues = (log2(C)/log2(radix));
         key_type last_minimum_;
+        bool reseeding_n_flag_;
         std::array<std::array<block_type, no_of_queues>, len> buckets_;
         std::array<std::pair<int, std::array<bool, no_of_queues>>, len> bucket_empty_flags_;
+        block_type n_bucket_;
 
     public:
         explicit multilayer_radix_pq() {
             bucket_empty_flags_ = {};
             last_minimum_ = std::numeric_limits<key_type>::min();
+            reseeding_n_flag_ = 0;
         };
 
         void push(key_type key, value_type val) {
             // TODO replace reinterpret_cast<>(key) with encoder
-            // TODO special case of N bucket
+            // check whether monotonicity is upheld
             assert(key >= last_minimum_);
-            std::pair<uint64_t, uint64_t> pos = internal::calculateBucket(
-                    reinterpret_cast<uint64_t>(key), last_minimum_, radix);
-            bucket_empty_flags_[pos.first].first = bucket_empty_flags_[pos.first].second[pos.second] = 1;
-            std::cout << "Pushing into B(" << pos.first << ", " << pos.second << ")." << std::endl; // output
-            buckets_[pos.first][pos.second].push_back(std::pair<key_type, value_type>(key, val));
+            // if key minum last minimum exceeds range [m, m+C] push into N  bucket
+            if((key - last_minimum_) > C  & !reseeding_n_flag_){
+                n_bucket_.push_back(std::pair<key_type, value_type> (key, val));
+                std::cout << "Pushing into N bucket." << std::endl; // output
+            }
+            else{
+                // calculate bucket
+                std::pair<uint64_t, uint64_t> pos = internal::calculateBucket(
+                        reinterpret_cast<uint64_t>(key), last_minimum_, radix);
+                // update bucket empty flags for calculated bucket
+                bucket_empty_flags_[pos.first].first = bucket_empty_flags_[pos.first].second[pos.second] = 1;
+                std::cout << "Pushing into B(" << pos.first << ", " << pos.second << ")." << std::endl; // output
+                // push key, value pair into calculated bucket
+                buckets_[pos.first][pos.second].push_back(std::pair<key_type, value_type>(key, val));
+            }
         }
 
         std::pair<key_type, value_type> pop() {
-            //TODO new round after empty normal queue and special N bucket contains elements
-            /// calculate threshold that decides if elements larger than C are pushed into N
             // find position of first non empty bucket
             std::pair<int, int> pos_minimum_element_ = top();
+            // if regular buckets are empty
+            if(pos_minimum_element_.first == -1){
+                // check if N bucket holds elements
+                if (!n_bucket_.empty()) {
+                    std::cout << "begin seeding from N bucket" << std::endl;
+                    // set reseeding from N flag
+                    reseeding_n_flag_ = 1;
+                    // find minimum in N bucket for reorganization
+                    key_type reorganization_minimum = internal::scanBucketForMinimum<key_type, block_type>(n_bucket_);
+                    // assign new minimum
+                    last_minimum_ = reorganization_minimum;
+                    // reorganize elements from N bucket
+                    while(!n_bucket_.empty()){
+                        // retrieve arbitrary element from current bucket
+                        std::pair<key_type, value_type> temp_element = n_bucket_.back();
+                        // push arbitrary element in mlrpq using the calculated minimum
+                        push(temp_element.first, temp_element.second);
+                        // remove element from old bucket
+                        n_bucket_.pop_back();
+                    }
+                    std::cout << "end reseeding from N phase" << std::endl;
+                    // set reseeding from N flag to false
+                    reseeding_n_flag_ = 0;
+                    // call pop again after reorganization
+                    pop();
+                }
+                // if all buckets including N bucket are empty, do something to indicate that queue is empty
+                else{
+                    std::cout << "mlrpq empty" << std::endl;
+                }
+            }
             // if B(0, m0) empty
-            if (pos_minimum_element_.first != 0) {
+            else if (pos_minimum_element_.first > 0) {
                 std::cout << "begin reorganization phase" << std::endl;
                 // calculate minimum of current first non empty bucket
                 key_type reorganization_minimum = internal::scanBucketForMinimum<key_type, block_type>(buckets_[pos_minimum_element_.first][pos_minimum_element_.second]);
