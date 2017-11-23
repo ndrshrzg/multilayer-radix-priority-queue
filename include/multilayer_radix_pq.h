@@ -29,15 +29,15 @@ namespace multilayer_radix_pq {
     namespace internal {
         static constexpr auto calculateBucket(uint64_t key, uint64_t last, size_t r) {
             //Left very explicit for now to debug
-            //TODO : needs review, if last = 128, push(130) pushes into B(0, 130) instead of B(0, 2)
             if(key == last) {
                 return std::pair<size_t, size_t>(0, 0);
             }
             else{
                 size_t index_highest_significant = (std::numeric_limits<uint64_t>::digits - __builtin_clzll(key ^ last)) - 1;
+                size_t mask = pow(2, index_highest_significant+1) -1;
                 size_t i = floor(index_highest_significant / log2(r));
                 auto shift = static_cast<size_t>(log2(r) * i);
-                size_t j = (key >> shift);
+                size_t j = ((key & mask) >> shift);
                 return std::pair<size_t, size_t>(i, j);
             }
         };
@@ -58,7 +58,7 @@ namespace multilayer_radix_pq {
 
     }; // end of namespace internal
 
-    template<typename KeyType, typename ValueType, size_t RADIX_BITS>
+    template<typename KeyType, typename ValueType, size_t RADIX_BITS, size_t C>
     class multilayer_radix_pq {
     public:
         //limiting the queue size to avoid memory overflow
@@ -70,15 +70,13 @@ namespace multilayer_radix_pq {
     private:
         static const int len = std::numeric_limits<key_type>::digits;
         static const size_t radix = size_t(1) << RADIX_BITS;
-        //TODO rewrite to calculate from C
-        static const size_t no_of_queues = static_cast<size_t>(radix * ceil(len / log2(radix)));
-        int C_;
+        static const size_t no_of_queues = (log2(C)/log2(radix));
         key_type last_minimum_;
         std::array<std::array<block_type, no_of_queues>, len> buckets_;
         std::array<std::pair<int, std::array<bool, no_of_queues>>, len> bucket_empty_flags_;
 
     public:
-        explicit multilayer_radix_pq(int C) : C_(C) {
+        explicit multilayer_radix_pq() {
             bucket_empty_flags_ = {};
             last_minimum_ = std::numeric_limits<key_type>::min();
         };
