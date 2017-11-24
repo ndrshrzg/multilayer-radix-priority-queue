@@ -20,15 +20,12 @@
 ///  As pointed out in the paper the bitvector (priority queue in paper) and buckets (disk pages)
 ///  will fit in internal memory
 
-//TODO changing radix bits to anything > 3 completely screws everyhting up, needs to be fixed first!
-
 //TODO methods only reading should be constexpr
-
 
 namespace multilayer_radix_pq {
 
     namespace internal {
-        static constexpr auto calculateBucket(uint64_t key, uint64_t last, size_t r) {
+        static constexpr std::pair<size_t, size_t> calculateBucket(uint64_t key, uint64_t last, size_t r) {
             //Left very explicit for now to debug
             if(key == last) {
                 return std::pair<size_t, size_t>(0, 0);
@@ -55,7 +52,7 @@ namespace multilayer_radix_pq {
             return reorganization_minimum;
         }
 
-        static constexpr auto findFirstNonEmpty(/*bucket_empty_flags_*/){};
+        //static constexpr auto findFirstNonEmpty(/*bucket_empty_flags_*/){};
 
     }; // end of namespace internal
 
@@ -69,13 +66,13 @@ namespace multilayer_radix_pq {
         //using block_type = stxxl::queue<std::pair<key_type, value_type>, block_size>; // deprecated for nostxxl branch
         using block_type = std::vector<std::pair<key_type, value_type>>;
     private:
-        static const int len = std::numeric_limits<key_type>::digits;
         static const size_t radix = size_t(1) << RADIX_BITS;
-        static const size_t no_of_queues = (log2(C)/log2(radix));
+        static const size_t no_of_buckets_ = radix-1;
+        static const int no_of_arrays_ = ceil(log2(C)/RADIX_BITS);
         key_type last_minimum_;
         bool reseeding_n_flag_;
-        std::array<std::array<block_type, no_of_queues>, len> buckets_;
-        std::array<std::pair<int, std::array<bool, no_of_queues>>, len> bucket_empty_flags_;
+        std::array<std::array<block_type, no_of_buckets_>, no_of_arrays_> buckets_;
+        std::array<std::pair<int, std::array<bool, no_of_buckets_>>, no_of_arrays_> bucket_empty_flags_;
         block_type n_bucket_;
 
     public:
@@ -95,7 +92,7 @@ namespace multilayer_radix_pq {
                 std::cout << "Pushing into N bucket." << std::endl; // output
             }
             else{
-                // calculate bucket
+                // calculate bucket indices (array, bucket)
                 std::pair<uint64_t, uint64_t> pos = internal::calculateBucket(
                         reinterpret_cast<uint64_t>(key), last_minimum_, radix);
                 // update bucket empty flags for calculated bucket
@@ -113,6 +110,8 @@ namespace multilayer_radix_pq {
             if(pos_minimum_element_.first == -1){
                 // check if N bucket holds elements
                 if (!n_bucket_.empty()) {
+                    // temporary N bucket for elements outside [m,m+C] range
+                    block_type temp_n_bucket;
                     std::cout << "begin seeding from N bucket" << std::endl;
                     // set reseeding from N flag
                     reseeding_n_flag_ = 1;
@@ -124,11 +123,23 @@ namespace multilayer_radix_pq {
                     while(!n_bucket_.empty()){
                         // retrieve arbitrary element from current bucket
                         std::pair<key_type, value_type> temp_element = n_bucket_.back();
-                        // push arbitrary element in mlrpq using the calculated minimum
-                        push(temp_element.first, temp_element.second);
-                        // remove element from old bucket
-                        n_bucket_.pop_back();
+                        // check if element is in range [m, m+C], if not it remains in N bucket
+                        if (temp_element.first < (last_minimum_ + C)) {
+                            // push arbitrary element in mlrpq using the calculated minimum
+                            push(temp_element.first, temp_element.second);
+                            // remove element from old bucket
+                            n_bucket_.pop_back();
+                        }
+                        // element remains in N bucket after reseeding
+                        else {
+                            // push element in temporary N bucket
+                            temp_n_bucket.push_back(temp_element);
+                            // pop element from N bucket to avoid infinite loop
+                            n_bucket_.pop_back();
+                        }
                     }
+                    // set temporary N bucket as N bucket
+                    n_bucket_.swap(temp_n_bucket);
                     std::cout << "end reseeding from N phase" << std::endl;
                     // set reseeding from N flag to false
                     reseeding_n_flag_ = 0;
@@ -184,20 +195,22 @@ namespace multilayer_radix_pq {
             if (buckets_[pos_update.first][pos_update.second].empty()){
                 bucket_empty_flags_[pos_update.first].second[pos_update.second] = 0;
                 // if bucket became empty, check if whole array is empty
+                // temporary variable to count empty buckets
                 int temp = 0;
-                for (int j = 0; j < no_of_queues; j++){
+                for (int j = 0; j < no_of_buckets_; j++){
+                    // if bucket is empty increase temp variable
                     if (buckets_[pos_update.first][j].empty()){ temp += 1; }
                 }
-                if(temp == no_of_queues) { bucket_empty_flags_[pos_update.first].first = 0;
-                    std::cout << "Array " << pos_update.first << " empty" << std::endl;} // output
+                // if number of empty buckets equals total number of buckets assign array flag to zero
+                if(temp == no_of_buckets_) { bucket_empty_flags_[pos_update.first].first = 0;}
             }
         }
 
-        auto top() {
+        std::pair<int,int> top() {
             //redefine as constexpr find_first_non_empty?
-            for (int i = 0; i < len; i++) {
+            for (int i = 0; i < no_of_arrays_; i++) {
                 if (bucket_empty_flags_[i].first) {
-                    for (int j = 0; j < no_of_queues; j++){
+                    for (int j = 0; j <= no_of_buckets_; j++){
                         if (bucket_empty_flags_[i].second[j]) {
                             return std::pair<int, int>(i,j);
                         }
