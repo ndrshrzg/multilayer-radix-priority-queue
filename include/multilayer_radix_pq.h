@@ -217,7 +217,9 @@ namespace multilayer_radix_pq {
             }
         }
 
-
+        //TODO top should return a reference to the current top ELEMENT it should be either of
+        // const value_type& top() const {}
+        // const std::pair<key_type, value_type>& top() const {}
         std::pair<key_type, value_type> top() {
             assert(!empty());
             if ((index_top_element() == std::pair<int64_t, int64_t> (-1, -1)) & !empty()){
@@ -231,6 +233,7 @@ namespace multilayer_radix_pq {
 
 
         bool empty() {
+            //TODO rewrite so empty uses O(1) time
             return (index_top_element() == std::pair<int64_t,int64_t>(-1, -1)) & n_bucket_.empty();
         }
     }; // end class multilayer_radix_pq
