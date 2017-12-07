@@ -2,7 +2,7 @@
 // Created by ndrshrzg on 10/26/17.
 //
 
-//#include <stxxl/queue>
+#include <stxxl/queue>
 #include <vector>
 #include <array>
 #include <cmath>
@@ -27,11 +27,11 @@ namespace multilayer_radix_pq {
     class multilayer_radix_pq {
     public:
         //limiting the queue size to avoid memory overflow
-        //static constexpr auto block_size = size_t(1) << 18; // deprecated for nostxxl branch
+        static constexpr auto block_size = size_t(1) << 18;
         using key_type = KeyType;
         using value_type = ValueType;
-        //using block_type = stxxl::queue<std::pair<key_type, value_type>, block_size>; // deprecated for nostxxl branch
-        using block_type = std::vector<std::pair<key_type, value_type>>;
+        using block_type = stxxl::queue<std::pair<key_type, value_type>, block_size>;
+        //using block_type = std::vector<std::pair<key_type, value_type>>;
     private:
         static const size_t radix = size_t(1) << RADIX_BITS;
         static const size_t no_of_buckets_ = radix;
@@ -57,6 +57,7 @@ namespace multilayer_radix_pq {
             N_bucket_minimum_ = std::numeric_limits<key_type>::max();
         };
 
+
         void initializeBucketMinima(size_t arr, size_t buck){
             // initialize array with bucket minima to be maximum
             for (int i=0; i < arr; i++){
@@ -72,7 +73,7 @@ namespace multilayer_radix_pq {
             assert(key >= last_minimum_);
             // if key minimum last minimum exceeds range [m, m+C] push into N  bucket
             if((key - last_minimum_) > C  & !reseeding_n_flag_){
-                n_bucket_.push_back(std::pair<key_type, value_type> (key, val));
+                n_bucket_.push(std::pair<key_type, value_type> (key, val));
                 if(key < N_bucket_minimum_) {N_bucket_minimum_ = key;};
                 // console output for debugging
                 //std::cout << "pushing into N bucket" << std::endl;
@@ -89,7 +90,7 @@ namespace multilayer_radix_pq {
                 // console output for debugging
                 //std::cout << "pushing " << key << " into B(" << pos.first <<", " << pos.second << ")" << std::endl;
                 // push key, value pair into calculated bucket
-                buckets_[pos.first][pos.second].push_back(std::pair<key_type, value_type>(key, val));
+                buckets_[pos.first][pos.second].push(std::pair<key_type, value_type>(key, val));
             }
         }
 
@@ -109,43 +110,42 @@ namespace multilayer_radix_pq {
         }
 
         void reseedFromNBucket() {
-                // re initialize bucket minima
-                initializeBucketMinima(no_of_arrays_, no_of_buckets_);
-                // temporary N bucket for elements outside [m,m+C] range
-                block_type temp_n_bucket;
-                // set reseeding from N flag
-                reseeding_n_flag_ = 1;
-                // retrieve minimum in N bucket for reorganization
-                //key_type reorganization_minimum = bucket_minimum_[pos_minimum_element_.first][pos_minimum_element_.second];
-                key_type reorganization_minimum = N_bucket_minimum_;
-                // assign new minimum
-                last_minimum_ = reorganization_minimum;
-                // reset N_bucket_minimum_
-                N_bucket_minimum_ = std::numeric_limits<key_type>::max();
-                // reorganize elements from N bucket
-                for(; !n_bucket_.empty(); n_bucket_.pop_back()) {
-                    // retrieve arbitrary element from current bucket
-                    std::pair<key_type, value_type> temp_element = n_bucket_.back();
-                    // check if element is in range [m, m+C], if not it remains in N bucket
-                    if (temp_element.first < (last_minimum_ + C)) {
-                        // push arbitrary element in mlrpq using the calculated minimum
-                        push(temp_element.first, temp_element.second);
-                    }
-                        // element remains in N bucket after reseeding
-                    else {
-                        // push element in temporary N bucket
-                        // console output for debugging
-                        //std::cout << "pushing " << temp_element.first << " into N bucket during reseeding phase" << std::endl;
-                        temp_n_bucket.push_back(temp_element);
-                        if (temp_element.first < N_bucket_minimum_){N_bucket_minimum_ = temp_element.first;};
-                    }
+            // re initialize bucket minima
+            initializeBucketMinima(no_of_arrays_, no_of_buckets_);
+            // temporary N bucket for elements outside [m,m+C] range
+            block_type temp_n_bucket;
+            // set reseeding from N flag
+            reseeding_n_flag_ = 1;
+            // retrieve minimum in N bucket for reorganization
+            //key_type reorganization_minimum = bucket_minimum_[pos_minimum_element_.first][pos_minimum_element_.second];
+            key_type reorganization_minimum = N_bucket_minimum_;
+            // assign new minimum
+            last_minimum_ = reorganization_minimum;
+            // reset N_bucket_minimum_
+            N_bucket_minimum_ = std::numeric_limits<key_type>::max();
+            // reorganize elements from N bucket
+            for (; !n_bucket_.empty(); n_bucket_.pop()) {
+                // retrieve arbitrary element from current bucket
+                std::pair<key_type, value_type> temp_element = n_bucket_.front();
+                // check if element is in range [m, m+C], if not it remains in N bucket
+                if (temp_element.first < (last_minimum_ + C)) {
+                    // push arbitrary element in mlrpq using the calculated minimum
+                    push(temp_element.first, temp_element.second);
                 }
-
-                // set temporary N bucket as N bucket
-                n_bucket_.swap(temp_n_bucket);
-                // set reseeding from N flag to false
-                reseeding_n_flag_ = 0;
-                // call pop again after reorganization
+                    // element remains in N bucket after reseeding
+                else {
+                    // push element in temporary N bucket
+                    // console output for debugging
+                    //std::cout << "pushing " << temp_element.first << " into N bucket during reseeding phase" << std::endl;
+                    temp_n_bucket.push(temp_element);
+                    if (temp_element.first < N_bucket_minimum_) { N_bucket_minimum_ = temp_element.first; };
+                }
+            }
+            // set temporary N bucket as N bucket
+            n_bucket_.swap(temp_n_bucket);
+            // set reseeding from N flag to false
+            reseeding_n_flag_ = 0;
+            // call pop again after reorganization
         }
 
 
@@ -169,9 +169,9 @@ namespace multilayer_radix_pq {
                 // reorganize bucket into B(0, m0) using reorganization_minimum
                 for(    ;
                         !buckets_[pos_minimum_element_.first][pos_minimum_element_.second].empty();
-                        buckets_[pos_minimum_element_.first][pos_minimum_element_.second].pop_back()) {
+                        buckets_[pos_minimum_element_.first][pos_minimum_element_.second].pop()) {
                     // retrieve arbitrary element from current bucket
-                    std::pair<key_type, value_type> temp_element = buckets_[pos_minimum_element_.first][pos_minimum_element_.second].back();
+                    std::pair<key_type, value_type> temp_element = buckets_[pos_minimum_element_.first][pos_minimum_element_.second].front();
                     // push arbitrary element in mlrpq using the calculated minimum
                     push(temp_element.first, temp_element.second);
                 }
@@ -183,9 +183,9 @@ namespace multilayer_radix_pq {
             else{
                 // retrieve element from bucket
                 std::pair<key_type, value_type> minimum_element_ =
-                        buckets_[pos_minimum_element_.first][pos_minimum_element_.second].back();
+                        buckets_[pos_minimum_element_.first][pos_minimum_element_.second].front();
                 // pop element from bucket
-                buckets_[pos_minimum_element_.first][pos_minimum_element_.second].pop_back();
+                buckets_[pos_minimum_element_.first][pos_minimum_element_.second].pop();
                 // check bucket empty flags and update if necessary
                 updateBucketEmptyFlags(pos_minimum_element_);
                 return;
@@ -232,7 +232,7 @@ namespace multilayer_radix_pq {
                 top();
             }
             std::pair<int64_t, int64_t> pos_minimum_emelent = index_top_element();
-            std::pair<key_type, value_type> minimum_element = buckets_[pos_minimum_emelent.first][pos_minimum_emelent.second].back();
+            std::pair<key_type, value_type> minimum_element = buckets_[pos_minimum_emelent.first][pos_minimum_emelent.second].front();
             return minimum_element;
         };
 

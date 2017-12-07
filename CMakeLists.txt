@@ -6,17 +6,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTXXL_PARALLEL=1")
 #INCLUDE STXXL
 SET(TMP_CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
 SET(CMAKE_BUILD_TYPE "RelWithDebInfo")
-#add_subdirectory(libs/stxxl/)
+add_subdirectory(libs/stxxl/)
 SET(CMAKE_BUILD_TYPE "${TMP_CMAKE_BUILD_TYPE}")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STXXL_CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=10000")
-#include_directories(${STXXL_INCLUDE_DIRS})
+include_directories(${STXXL_INCLUDE_DIRS})
 
 set(CMAKE_CXX_FLAGS_DEBUG   "${CMAKE_CXX_FLAGS_DEBUG}   -DSTXXL_VERBOSE_LEVEL=1")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DSTXXL_VERBOSE_LEVEL=0")
 
-#include_directories(libs/stxxl/include/)
+include_directories(libs/stxxl/include/)
 
 
 #INCLUDE GTEST
@@ -53,6 +53,6 @@ if (CMAKE_VERSION VERSION_LESS 2.8.11)
 endif()
 
 add_executable(multilayer_radix_priority_queue main.cpp include/multilayer_radix_pq.h)
-#target_link_libraries(multilayer_radix_priority_queue ${STXXL_LIBRARIES})
+target_link_libraries(multilayer_radix_priority_queue ${STXXL_LIBRARIES})
 add_executable(multilayer_radix_priority_queue_test test/multilayer_radix_pq_tests.cpp include/multilayer_radix_pq.h)
-target_link_libraries(multilayer_radix_priority_queue_test gtest_main)
+target_link_libraries(multilayer_radix_priority_queue_test gtest_main ${STXXL_LIBRARIES})
