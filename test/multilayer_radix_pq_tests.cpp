@@ -1,5 +1,6 @@
 //
-// Created by anherzog on 09.11.2017.
+// Created by Andreas Herzog on 12/07/17.
+// andreas.herzog@stud.uni-frankfurt.de
 //
 
 #include <queue>
@@ -50,7 +51,7 @@ TEST(mlrpqTest, TopReturnsMinimumElementFromNBucket){
     ASSERT_EQ(exp, res);
 }
 
-
+/* index_top_element() is now private
 TEST(mlrpqTest, QueuePushesCorrectlyAfterPop){
     multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 5> mlrpq;
 
@@ -62,6 +63,7 @@ TEST(mlrpqTest, QueuePushesCorrectlyAfterPop){
     ASSERT_EQ(9, mlrpq.index_top_element().second);
 
 }
+*/
 
 TEST(mlrpqTest, CrashesWhenMonotonicityBroken){
     multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 5> mlrpq;

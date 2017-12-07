@@ -1,7 +1,9 @@
-#include <iostream>
-#include <queue>
-#include "include/multilayer_radix_pq.h"
+//
+// Created by Andreas Herzog on 12/07/17.
+// andreas.herzog@stud.uni-frankfurt.de
+//
 
+#include "include/multilayer_radix_pq.h"
 
 typedef struct data
 {

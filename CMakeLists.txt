@@ -1,3 +1,7 @@
+# Andreas Herzog, 12/07/17
+# andreas.herzog@stud.uni-frankfurt.de
+
+
 cmake_minimum_required(VERSION 3.8)
 project(multilayer_radix_priority_queue)
 
