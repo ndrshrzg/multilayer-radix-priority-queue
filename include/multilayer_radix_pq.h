@@ -38,7 +38,7 @@ namespace multilayer_radix_pq {
         static const size_t no_of_buckets_ = radix_;
         // estimate C as upper limit of key_type
         //static const size_t C = std::numeric_limits<key_type>::max();
-        static const size_t C_ = size_t(1) << 32;
+        static const size_t C_ = size_t(1) << 20;
         static const size_t no_of_arrays_ = ceil(log2(C_)/RADIX_BITS) + 1;
         key_type last_minimum_;
         key_type N_bucket_minimum_;
