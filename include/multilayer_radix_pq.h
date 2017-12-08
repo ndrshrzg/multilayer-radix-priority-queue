@@ -3,8 +3,8 @@
 // andreas.herzog@stud.uni-frankfurt.de
 //
 
-#include <stxxl/queue>
-#include <vector>
+//#include <stxxl/queue>
+#include <queue>
 #include <array>
 #include <cmath>
 #include <limits>
@@ -14,10 +14,6 @@
 #ifndef MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 
-// avoid memory being used up by too large stxxl::queues
-#define LIMITMEMORY
-
-
 namespace multilayer_radix_pq {
 
     template<typename KeyType, typename ValueType, size_t RADIX_BITS>
@@ -26,12 +22,8 @@ namespace multilayer_radix_pq {
     public:
         using key_type = KeyType;
         using value_type = ValueType;
-#ifdef LIMITMEMORY
-        static constexpr auto block_size = size_t(1) << 18;
-        using block_type = stxxl::queue<std::pair<key_type, value_type>, block_size>;
-#else
-        using block_type = stxxl::queue<std::pair<key_type, value_type>>;
-#endif
+        using block_type = std::queue<std::pair<key_type, value_type>>;
+
 
     private:
         static const size_t radix_ = size_t(1) << RADIX_BITS;

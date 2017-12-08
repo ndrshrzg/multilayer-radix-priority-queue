@@ -105,9 +105,6 @@ TEST(mlrpqTest, QueueReturnsCorrectArray){
         const auto temp_pair = mlrpq.top();
 
         uint64_t temp_mlrpq = temp_pair.first;
-
-        std::cout << mlrpq.top().second << std::endl;
-
         uint64_t temp_pq = pq.top();
 
         res_mlrpq.push_back(temp_mlrpq);
