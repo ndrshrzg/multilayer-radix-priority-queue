@@ -14,6 +14,9 @@
 #ifndef MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 
+// avoid memory being used up by too large stxxl::queues
+#define LIMITMEMORY
+
 
 namespace multilayer_radix_pq {
 
@@ -21,26 +24,48 @@ namespace multilayer_radix_pq {
     class multilayer_radix_pq {
 
     public:
-        //limiting the queue size to avoid memory overflow
-        static constexpr auto block_size = size_t(1) << 18;
         using key_type = KeyType;
         using value_type = ValueType;
+#ifdef LIMITMEMORY
+        static constexpr auto block_size = size_t(1) << 18;
         using block_type = stxxl::queue<std::pair<key_type, value_type>, block_size>;
+#else
+        using block_type = stxxl::queue<std::pair<key_type, value_type>>;
+#endif
 
     private:
         static const size_t radix_ = size_t(1) << RADIX_BITS;
         static const size_t no_of_buckets_ = radix_;
         // estimate C as upper limit of key_type
         //static const size_t C = std::numeric_limits<key_type>::max();
-        static const size_t C_ = size_t(1) << 18;
-        static const size_t no_of_arrays_ = ceil(log2(C_)/RADIX_BITS);
+        static const size_t C_ = size_t(1) << 32;
+        static const size_t no_of_arrays_ = ceil(log2(C_)/RADIX_BITS) + 1;
         key_type last_minimum_;
         key_type N_bucket_minimum_;
+        std::pair<int64_t, int64_t> current_minimum_index_;
         std::array<std::array<block_type, no_of_buckets_>, no_of_arrays_> buckets_;
         std::array<std::array<uint64_t, no_of_buckets_>, no_of_arrays_> bucket_minimum_;
         std::array<std::pair<bool, std::array<bool, no_of_buckets_>>, no_of_arrays_> bucket_empty_flags_;
         block_type n_bucket_;
         bool reseeding_n_flag_;
+        bool first_push_flag_;
+
+
+    public:
+        explicit multilayer_radix_pq() {
+            bucket_empty_flags_ = {};
+            last_minimum_ = std::numeric_limits<key_type>::min();
+            reseeding_n_flag_ = false;
+            first_push_flag_ = true;
+            initializeBucketMinima(no_of_arrays_, no_of_buckets_);
+            N_bucket_minimum_ = std::numeric_limits<key_type>::max();
+            current_minimum_index_.first = -1;
+            current_minimum_index_.second = -1;
+
+        };
+
+
+        ~multilayer_radix_pq() = default;
 
 
     private:
@@ -107,7 +132,7 @@ namespace multilayer_radix_pq {
         }
 
 
-        std::pair <size_t, size_t> calculateBucket(uint64_t key, uint64_t last){
+        const std::pair <size_t, size_t> calculateBucket(uint64_t key, uint64_t last) const {
             if(key == last) {
                 return {0, 0};
             }
@@ -122,7 +147,7 @@ namespace multilayer_radix_pq {
         }
 
 
-        std::pair<int64_t, int64_t> index_top_element() {
+        std::pair<int64_t, int64_t> calculateMinimumIndex() {
             for (int i = 0; i < no_of_arrays_; i++) {
                 if (bucket_empty_flags_[i].first) {
                     for (int j = 0; j <= no_of_buckets_; j++){
@@ -136,19 +161,14 @@ namespace multilayer_radix_pq {
         }
 
 
+        void updateCurrentMinimumIndex(){
+            std::pair<int64_t, int64_t> calculated_index = calculateMinimumIndex();
+            current_minimum_index_.first = calculated_index.first;
+            current_minimum_index_.second = calculated_index.second;
+        }
+
+
     public:
-        explicit multilayer_radix_pq() {
-            bucket_empty_flags_ = {};
-            last_minimum_ = std::numeric_limits<key_type>::min();
-            reseeding_n_flag_ = false;
-            initializeBucketMinima(no_of_arrays_, no_of_buckets_);
-            N_bucket_minimum_ = std::numeric_limits<key_type>::max();
-        };
-
-
-        ~multilayer_radix_pq() = default;
-
-
         void push(key_type key, const value_type& val) {
             // TODO replace reinterpret_cast<>(key) with encoder
             // check whether monotonicity is upheld
@@ -158,6 +178,7 @@ namespace multilayer_radix_pq {
             if((key - last_minimum_) > C_  & !reseeding_n_flag_){
                 n_bucket_.push(std::pair<key_type, value_type> (key, val));
                 if(key < N_bucket_minimum_) {N_bucket_minimum_ = key;};
+                first_push_flag_ = false;
             }
             else{
                 // calculate bucket indices (array, bucket)
@@ -170,6 +191,27 @@ namespace multilayer_radix_pq {
                 if (key < bucket_minimum_[pos.first][pos.second]) {bucket_minimum_[pos.first][pos.second] = key;};
                 // push key, value pair into calculated bucket
                 buckets_[pos.first][pos.second].push({key, val});
+
+                // set the current minimum index to calculated bucket of first ever push
+                if (first_push_flag_) {
+                    current_minimum_index_.first = pos.first;
+                    current_minimum_index_.second = pos.second;
+                }
+                // when reseeding from N, current minimum index will always be (0, 0)
+                else if (reseeding_n_flag_){
+                    current_minimum_index_.first = 0;
+                    current_minimum_index_.second = 0;
+                }
+                // update current minimum index without calling the expensive update function
+                else{
+                    if (pos.first <= current_minimum_index_.first){
+                        if (pos.second < current_minimum_index_.second){
+                            current_minimum_index_.first = pos.first;
+                            current_minimum_index_.second = pos.second;
+                        }
+                    }
+                }
+                first_push_flag_ = false;
             }
         }
 
@@ -177,7 +219,7 @@ namespace multilayer_radix_pq {
         void pop() {
             assert(!empty());
             // find position of first non empty bucket
-            const auto pos_minimum_element_ = index_top_element();
+            const auto pos_minimum_element_ = current_minimum_index_;
             // if regular buckets are empty
             if(pos_minimum_element_.first == -1){
                 reseedFromNBucket();
@@ -213,28 +255,27 @@ namespace multilayer_radix_pq {
                 buckets_[pos_minimum_element_.first][pos_minimum_element_.second].pop();
                 // check bucket empty flags and update if necessary
                 updateBucketEmptyFlags(pos_minimum_element_);
+                // update current minimum index
+                updateCurrentMinimumIndex();
                 return;
             }
         }
 
-        //TODO top should return a reference to the current top ELEMENT it should be either of
-        // const value_type& top() const {}
-        // const std::pair<key_type, value_type>& top() const {}
-        std::pair<key_type, value_type> top() {
+
+        const std::pair<key_type, value_type>& top() {
             assert(!empty());
-            if ((index_top_element() == std::pair<int64_t, int64_t> (-1, -1)) & !empty()){
+            if ((current_minimum_index_ == std::pair<int64_t, int64_t> (-1, -1)) & !empty()){
                 reseedFromNBucket();
                 top();
             }
-            std::pair<int64_t, int64_t> pos_minimum_emelent = index_top_element();
-            std::pair<key_type, value_type> minimum_element = buckets_[pos_minimum_emelent.first][pos_minimum_emelent.second].front();
+            //std::pair<int64_t, int64_t> pos_minimum_emelent = current_minimum_index_;
+            std::pair<key_type, value_type>& minimum_element = buckets_[current_minimum_index_.first][current_minimum_index_.second].front();
             return minimum_element;
         };
 
 
-        bool empty() {
-            //TODO rewrite so empty uses O(1) time
-            return (index_top_element() == std::pair<int64_t,int64_t>(-1, -1)) & n_bucket_.empty();
+        bool empty() const {
+            return (current_minimum_index_ == std::pair<int64_t,int64_t>(-1, -1)) & n_bucket_.empty();
         }
     }; // end class multilayer_radix_pq
 }

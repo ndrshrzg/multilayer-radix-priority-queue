@@ -58,5 +58,7 @@ endif()
 
 add_executable(multilayer_radix_priority_queue main.cpp include/multilayer_radix_pq.h)
 target_link_libraries(multilayer_radix_priority_queue ${STXXL_LIBRARIES})
+add_executable(benchmark_mlrpq benchmark.cpp include/multilayer_radix_pq.h)
+target_link_libraries(benchmark_mlrpq ${STXXL_LIBRARIES})
 add_executable(multilayer_radix_priority_queue_test test/multilayer_radix_pq_tests.cpp include/multilayer_radix_pq.h)
 target_link_libraries(multilayer_radix_priority_queue_test gtest_main ${STXXL_LIBRARIES})

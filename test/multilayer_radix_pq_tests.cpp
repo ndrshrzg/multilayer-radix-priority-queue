@@ -51,19 +51,10 @@ TEST(mlrpqTest, TopReturnsMinimumElementFromNBucket){
     ASSERT_EQ(exp, res);
 }
 
-/* index_top_element() is now private
-TEST(mlrpqTest, QueuePushesCorrectlyAfterPop){
+TEST(mlrpqTest, TopCrashesWhenEmpty){
     multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 5> mlrpq;
-
-    mlrpq.push(128, 0);
-    mlrpq.pop();
-    mlrpq.push(137, 0);
-
-    ASSERT_EQ(0, mlrpq.index_top_element().first);
-    ASSERT_EQ(9, mlrpq.index_top_element().second);
-
+    ASSERT_DEATH(mlrpq.top(), ".");
 }
-*/
 
 TEST(mlrpqTest, CrashesWhenMonotonicityBroken){
     multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 5> mlrpq;
@@ -71,6 +62,26 @@ TEST(mlrpqTest, CrashesWhenMonotonicityBroken){
     mlrpq.pop();
 
     ASSERT_DEATH(mlrpq.push(127, 0), ".");
+
+}
+
+TEST(mlrpqTest, PopRemovesMinimumElement){
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 5> mlrpq;
+    mlrpq.push(128, 0);
+    mlrpq.push(129, 0);
+    mlrpq.pop();
+    uint64_t res = mlrpq.top().first;
+    uint64_t exp = 129;
+
+    ASSERT_EQ(res, exp);
+
+}
+
+TEST(mlrpqTest, PopCrashesWhenEmpty){
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 5> mlrpq;
+
+    ASSERT_DEATH(mlrpq.pop(), ".");
+
 
 }
 
@@ -90,7 +101,13 @@ TEST(mlrpqTest, QueueReturnsCorrectArray){
     }
 
     for (int j=0; j<size; j++){
-        uint64_t temp_mlrpq = mlrpq.top().first;
+
+        const auto temp_pair = mlrpq.top();
+
+        uint64_t temp_mlrpq = temp_pair.first;
+
+        std::cout << mlrpq.top().second << std::endl;
+
         uint64_t temp_pq = pq.top();
 
         res_mlrpq.push_back(temp_mlrpq);
