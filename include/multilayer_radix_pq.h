@@ -18,6 +18,7 @@
 #ifndef MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 
+// uncomment if architecture does not support __builtin_clzll method
 //#define COMPILERAGNOSTIC
 
 namespace internal {
@@ -27,7 +28,7 @@ namespace internal {
     public:
         using key_type = KeyType;
 
-        static constexpr size_t calculateIndexHighestSignificant(key_type key){
+        static constexpr size_t calculateIndexHighestSignificantBit(key_type key){
             size_t index = 0;
             for (size_t i = sizeof(key) * CHAR_BIT; i--; )
             {
@@ -37,13 +38,8 @@ namespace internal {
                 index++;
             }
             return index;
-
         }
-
     };
-
-
-
 }
 
 
@@ -166,7 +162,7 @@ namespace multilayer_radix_pq {
                 const size_t index_highest_significant = (std::numeric_limits<uint64_t>::digits - __builtin_clzll(key ^ last)) - 1;
 #else
                 const size_t index_highest_significant =
-                (std::numeric_limits<uint64_t>::digits - internal::calculations<key_type>::calculateIndexHighestSignificant(key ^ last)) - 1;
+                (std::numeric_limits<uint64_t>::digits - internal::calculations<key_type>::calculateIndexHighestSignificantBit(key ^ last)) - 1;
 #endif
                 const size_t mask = (size_t(1) << (index_highest_significant+1))-1;
                 const size_t i = floor(index_highest_significant / log2(radix_));
