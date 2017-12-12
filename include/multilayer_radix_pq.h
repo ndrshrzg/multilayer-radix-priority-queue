@@ -8,11 +8,44 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <climits>
 #include <iterator>
 #include <cassert>
+#include <iostream>
+#include <cstdint>
+
 
 #ifndef MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
+
+//#define COMPILERAGNOSTIC
+
+namespace internal {
+
+    template<typename KeyType>
+    class calculations{
+    public:
+        using key_type = KeyType;
+
+        static constexpr size_t calculateIndexHighestSignificant(key_type key){
+            size_t index = 0;
+            for (size_t i = sizeof(key) * CHAR_BIT; i--; )
+            {
+                if ((key >> i) == 1){
+                    return index;
+                }
+                index++;
+            }
+            return index;
+
+        }
+
+    };
+
+
+
+}
+
 
 namespace multilayer_radix_pq {
 
@@ -129,7 +162,12 @@ namespace multilayer_radix_pq {
                 return {0, 0};
             }
             else{
+#ifndef COMPILERAGNOSTIC
                 const size_t index_highest_significant = (std::numeric_limits<uint64_t>::digits - __builtin_clzll(key ^ last)) - 1;
+#else
+                const size_t index_highest_significant =
+                (std::numeric_limits<uint64_t>::digits - internal::calculations<key_type>::calculateIndexHighestSignificant(key ^ last)) - 1;
+#endif
                 const size_t mask = (size_t(1) << (index_highest_significant+1))-1;
                 const size_t i = floor(index_highest_significant / log2(radix_));
                 const auto shift = static_cast<size_t>(log2(radix_) * i);
