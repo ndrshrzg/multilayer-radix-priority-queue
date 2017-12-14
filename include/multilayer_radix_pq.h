@@ -3,16 +3,43 @@
 // andreas.herzog@stud.uni-frankfurt.de
 //
 
-//#include <stxxl/queue>
-#include <queue>
+#include <stxxl/queue>
+//#include <queue>
 #include <array>
 #include <cmath>
 #include <limits>
 #include <iterator>
 #include <cassert>
+#include <climits>
 
 #ifndef MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
+
+#define LIMITMEMORY
+//#define COMPILERAGNOSTIC
+
+namespace internal {
+
+    template<typename KeyType>
+    class calculations{
+    public:
+        using key_type = KeyType;
+
+        static constexpr size_t calculateIndexHighestSignificantBit(key_type key){
+            size_t index = 0;
+            for (size_t i = sizeof(key) * CHAR_BIT; i--; )
+            {
+                if ((key >> i) == 1){
+                    return index;
+                }
+                index++;
+            }
+            return index;
+        }
+    };
+}
+
+
 
 namespace multilayer_radix_pq {
 
@@ -22,7 +49,12 @@ namespace multilayer_radix_pq {
     public:
         using key_type = KeyType;
         using value_type = ValueType;
-        using block_type = std::queue<std::pair<key_type, value_type>>;
+#ifdef LIMITMEMORY
+        static constexpr auto block_size = size_t(1) << 18;
+        using block_type = stxxl::queue<std::pair<key_type, value_type>, block_size>;
+#else
+        using block_type = stxxl::queue<std::pair<key_type, value_type>>;
+#endif
 
 
     private:
@@ -129,7 +161,12 @@ namespace multilayer_radix_pq {
                 return {0, 0};
             }
             else{
+#ifdef COMPILERAGNOSTIC
+                const size_t index_highest_significant =
+                        (std::numeric_limits<uint64_t>::digits - internal::calculations<key_type>::calculateIndexHighestSignificantBit(key ^ last)) - 1;
+#else
                 const size_t index_highest_significant = (std::numeric_limits<uint64_t>::digits - __builtin_clzll(key ^ last)) - 1;
+#endif
                 const size_t mask = (size_t(1) << (index_highest_significant+1))-1;
                 const size_t i = floor(index_highest_significant / log2(radix_));
                 const auto shift = static_cast<size_t>(log2(radix_) * i);
