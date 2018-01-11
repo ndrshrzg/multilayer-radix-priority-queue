@@ -86,7 +86,7 @@ TEST(mlrpqTest, PopCrashesWhenEmpty){
 }
 
 TEST(mlrpqTest, QueueReturnsCorrectArray){
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 3> mlrpq;
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 3, true> mlrpq;
     std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>> pq;
 
     std::vector<uint64_t> ar{0,1,2,3,5,64,129,257,986,2049,16895,28675,2406987, 2406994,3698574,7845329,12896586,67895442138, 878954421389634};
@@ -120,22 +120,25 @@ TEST(mlrpqTest, QueueReturnsCorrectArray){
 }
 
 TEST(mlrpqTest, QueuesDifferentRadixReturnSameArray){
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 3> mlrpq3;
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 6> mlrpq6;
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 8> mlrpq8;
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 11> mlrpq11;
 
-    std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>> pq;
+    using KEY_TYPE = uint32_t;
+
+    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 3, true> mlrpq3;
+    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 6, true> mlrpq6;
+    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 8, true> mlrpq8;
+    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 11, true> mlrpq11;
+
+    std::priority_queue<KEY_TYPE, std::vector<KEY_TYPE>, std::greater<KEY_TYPE>> pq;
 
     bool eq = true;
 
-    std::vector<uint64_t> ar{0,1,2,3,5,64,129,257,986,2049,16895,28675,2406987,3698574,7845329,12896586,67895442138, 878954421389634};
+    std::vector<KEY_TYPE> ar{0,1,2,3,5,64,129,257,986,2049,16895,28675,2406987,3698574,7845329,12896586};
     size_t size = ar.size();
 
-    std::vector<uint64_t> res_mlrpq3;
-    std::vector<uint64_t> res_mlrpq6;
-    std::vector<uint64_t> res_mlrpq8;
-    std::vector<uint64_t> res_mlrpq11;
+    std::vector<KEY_TYPE> res_mlrpq3;
+    std::vector<KEY_TYPE> res_mlrpq6;
+    std::vector<KEY_TYPE> res_mlrpq8;
+    std::vector<KEY_TYPE> res_mlrpq11;
 
     for (int i=0; i < size; i++){
         pq.push(ar[i]);
@@ -146,11 +149,11 @@ TEST(mlrpqTest, QueuesDifferentRadixReturnSameArray){
     }
 
     for (int j=0; j<size; j++){
-        uint64_t temp_mlrpq3 = mlrpq3.top().first;
-        uint64_t temp_mlrpq6 = mlrpq6.top().first;
-        uint64_t temp_mlrpq8 = mlrpq8.top().first;
-        uint64_t temp_mlrpq11 = mlrpq11.top().first;
-        uint64_t temp_pq = pq.top();
+        KEY_TYPE temp_mlrpq3 = mlrpq3.top().first;
+        KEY_TYPE temp_mlrpq6 = mlrpq6.top().first;
+        KEY_TYPE temp_mlrpq8 = mlrpq8.top().first;
+        KEY_TYPE temp_mlrpq11 = mlrpq11.top().first;
+        KEY_TYPE temp_pq = pq.top();
 
         if (
             temp_pq != temp_mlrpq3 |
