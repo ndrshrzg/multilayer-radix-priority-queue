@@ -32,7 +32,7 @@ TEST(mlrpqTest, NotEmptyAfterPushIntoNBucket){
 }
 
 TEST(mlrpqTest, TopReturnsMinimumElement){
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 3> mlrpq;
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 6> mlrpq;
     mlrpq.push(uint64_t(pow(2,0)),1);
     mlrpq.push(uint64_t(pow(2,1)),1);
 
@@ -47,6 +47,16 @@ TEST(mlrpqTest, TopReturnsMinimumElementFromNBucket){
     mlrpq.push((size_t(1)<<20)+1, 0);
 
     uint64_t res = mlrpq.top().first;
+    uint64_t exp = size_t(1)<<20;
+    ASSERT_EQ(exp, res);
+}
+
+TEST(mlrpqTest, TopConstReturnsMinimumElementFromNBucket){
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 5> mlrpq;
+    mlrpq.push(size_t(1)<<20, 0);
+    mlrpq.push((size_t(1)<<20)+1, 0);
+
+    uint64_t res = mlrpq.top_const();
     uint64_t exp = size_t(1)<<20;
     ASSERT_EQ(exp, res);
 }
@@ -86,7 +96,7 @@ TEST(mlrpqTest, PopCrashesWhenEmpty){
 }
 
 TEST(mlrpqTest, QueueReturnsCorrectArray){
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 3, true> mlrpq;
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 6, true> mlrpq;
     std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>> pq;
 
     std::vector<uint64_t> ar{0,1,2,3,5,64,129,257,986,2049,16895,28675,2406987, 2406994,3698574,7845329,12896586,67895442138, 878954421389634};
@@ -135,11 +145,6 @@ TEST(mlrpqTest, QueuesDifferentRadixReturnSameArray){
     std::vector<KEY_TYPE> ar{0,1,2,3,5,64,129,257,986,2049,16895,28675,2406987,3698574,7845329,12896586};
     size_t size = ar.size();
 
-    std::vector<KEY_TYPE> res_mlrpq3;
-    std::vector<KEY_TYPE> res_mlrpq6;
-    std::vector<KEY_TYPE> res_mlrpq8;
-    std::vector<KEY_TYPE> res_mlrpq11;
-
     for (int i=0; i < size; i++){
         pq.push(ar[i]);
         mlrpq3.push(ar[i], 0);
@@ -174,5 +179,59 @@ TEST(mlrpqTest, QueuesDifferentRadixReturnSameArray){
     }
 
     ASSERT_EQ(true, eq);
+
+}
+
+
+
+TEST(mlrpqTest, QueueReturnsCorrectArrayWithIntermittendPop){
+    using KEY_TYPE = uint32_t;
+
+    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 5, false> mlrpq;
+
+    std::vector<KEY_TYPE> ar1{0,1,2,3,5,64,129,257,986,2049};
+    std::vector<KEY_TYPE> ar2{16895,28675,2406987,3698574,7845329,12896586};
+    std::vector<KEY_TYPE> ar3{12896786, 13896586, 13897586, 22896586};
+
+    std::vector<KEY_TYPE> ar_res{7845329,12896586, 12896786, 13896586, 13897586, 22896586};
+
+    std::vector<KEY_TYPE> res_mlrpq;
+
+    auto size_ar1 = ar1.size();
+    auto size_ar2 = ar2.size();
+    auto size_ar3 = ar3.size();
+
+    for (int i = 0; i < size_ar1; i++){
+        mlrpq.push(ar1[i], 0);
+    }
+
+    for (int i1 = 0; i1 < 7; i1++){
+        mlrpq.pop();
+    }
+
+    for (int j = 0; j < size_ar2; j++){
+        mlrpq.push(ar2[j], 0);
+    }
+
+    for (int i2 = 0; i2 < 7; i2++){
+        mlrpq.pop();
+    }
+
+    for (int k = 0; k < size_ar3; k++){
+        mlrpq.push(ar3[k], 0);
+    }
+
+    while (!mlrpq.empty()){
+        res_mlrpq.push_back(mlrpq.top().first);
+        mlrpq.pop();
+
+    }
+
+    for (int r = 0; r < ar_res.size(); r++){
+        std::cout << "mlrpq: " << res_mlrpq[r] << "\t res: " << ar_res[r] << std::endl;
+    }
+
+    ASSERT_EQ(ar_res, res_mlrpq);
+
 
 }
