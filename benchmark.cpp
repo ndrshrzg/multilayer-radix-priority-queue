@@ -5,6 +5,8 @@
 
 #include "include/multilayer_radix_pq.h"
 #include <chrono>
+#include <iostream>
+#include <algorithm>
 
 typedef struct data
 {
