@@ -4,10 +4,9 @@
 //
 
 #include "include/multilayer_radix_pq.h"
+#include <chrono>
 #include <iostream>
 #include <algorithm>
-#include <chrono>
-
 
 typedef struct data
 {
@@ -37,7 +36,8 @@ int main()
     std::cout << "generating random numbers" << std::endl;
     std::chrono::steady_clock::time_point generate_start = std::chrono::steady_clock::now();
     uint64_t N;
-    uint64_t number_of_entries = 1 << 12;
+    /// number_of_entries > 2^14 result in bad_alloc in pq on 16GB RAM
+    uint64_t number_of_entries = 1 << 10;
 
 
     const uint64_t a = 0;
@@ -66,7 +66,7 @@ int main()
     ///benchmark pq
     std::cout << "started benchmarking pq" << std::endl;
     auto time_pq = benchPQ(random_numbers, val);
-    std::cout << "fnished benchmarking pq" << std::endl;
+    std::cout << "finished benchmarking pq" << std::endl;
 
     ///benchmark mlrpq
     std::cout << "started benchmarking mlrpq" << std::endl;
@@ -76,7 +76,7 @@ int main()
 
 
 
-    std::cout << "Time generating:\t" << std::chrono::duration_cast<std::chrono::microseconds>(generate_end - generate_start).count() << "us" << std::endl;
+    std::cout << "Time generating:\t" << std::chrono::duration_cast<std::chrono::microseconds>(generate_end - generate_start).count() << " us" << std::endl;
     std::cout << "Time sorting:\t\t" << std::chrono::duration_cast<std::chrono::microseconds>(sorting_end - sorting_start).count() << "us" << std::endl;
     std::cout << "Time mlrpq:\t\t\t" << std::chrono::duration_cast<std::chrono::microseconds>(time_mlrpq.first - time_mlrpq.second).count() << "us" << std::endl;
     std::cout << "Time pq:\t\t\t" << std::chrono::duration_cast<std::chrono::microseconds>(time_pq.first - time_pq.second).count() << "us" << std::endl;
