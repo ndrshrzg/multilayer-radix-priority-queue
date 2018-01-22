@@ -142,10 +142,10 @@ TEST(mlrpqTest, QueuesDifferentRadixReturnSameArray){
 
     bool eq = true;
 
-    std::vector<KEY_TYPE> ar{0,1,2,3,5,64,129,257,986,2049,16895,28675,2406987,3698574,7845329,12896586};
+    std::vector<KEY_TYPE> ar{0,1,2,3,5,64,129,257,986,2049,16895,28675,2406987,3698574,7845329,12896586, 4294967295};
     size_t size = ar.size();
 
-    for (int i=0; i < size; i++){
+    for (int i=0; i <= size; i++){
         pq.push(ar[i]);
         mlrpq3.push(ar[i], 0);
         mlrpq6.push(ar[i], 0);
