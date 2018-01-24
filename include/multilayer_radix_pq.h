@@ -12,6 +12,8 @@
 #include <cassert>
 #include <climits>
 
+#include <iostream>
+
 #ifndef MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 
@@ -60,7 +62,7 @@ namespace internal {
 
 namespace multilayer_radix_pq {
 
-    template<typename KeyType, typename ValueType, size_t RADIX_BITS, bool ALLOW_C_OVERFLOW = false>
+    template<typename KeyType, typename ValueType, size_t RADIX_BITS, bool ALLOW_N_OVERFLOW = false>
     class multilayer_radix_pq {
 
     public:
@@ -80,6 +82,7 @@ namespace multilayer_radix_pq {
         static constexpr size_t radix_ = size_t(1) << RADIX_BITS;
         static const size_t no_of_buckets_ = radix_;
         // estimate C as upper limit of key_type
+        // this is a really bad estimate since no keys will be pushed into N bucket
         static const size_t C = std::numeric_limits<key_type>::max();
         static const auto C_BITS_ = std::numeric_limits<key_type>::digits;
         static const size_t no_of_arrays_ = (C_BITS_/RADIX_BITS)+1;
@@ -135,7 +138,7 @@ namespace multilayer_radix_pq {
             N_bucket_minimum_ = std::numeric_limits<key_type>::max();
             // reorganize elements from N bucket
 
-            if (ALLOW_C_OVERFLOW){
+            if (ALLOW_N_OVERFLOW){
                 // temporary N bucket for elements outside [m,m+C] range
                 block_type temp_n_bucket;
                 for (; !n_bucket_.empty(); n_bucket_.pop()) {
@@ -143,7 +146,7 @@ namespace multilayer_radix_pq {
                     std::pair<key_type, value_type> temp_element = n_bucket_.front();
                     // check if element is in range [m, m+C], if not it remains in N bucket
 
-                    if (temp_element.first < (last_minimum_ + C)) {
+                    if ((temp_element.first - last_minimum_) < C) {
                         // push arbitrary element in mlrpq using the calculated minimum
                         push(temp_element.first, temp_element.second);
 
@@ -260,6 +263,33 @@ namespace multilayer_radix_pq {
             /// so we are looking for the least significant bit, not the hightest!
             /// THERE ARE NO BUCKETS B(k, 0) k > 0!
 
+            std::pair<int64_t, int64_t> res {-1, -1};
+            std::pair<int64_t, int64_t> res_bitwise {-1, -1};
+
+
+            for (int i = 0; i < no_of_arrays_; i++) {
+                if (bucket_empty_flags_[i].first) {
+                    for (int j = 0; j <= no_of_buckets_; j++){
+                        if (bucket_empty_flags_[i].second[j]) {
+                            res.first = i;
+                            res.second = j;
+                        }
+                    }
+                }
+            }
+
+            res_bitwise.first = internal::switching<uint64_t>::index_least_significant(bucket_empty_flags_first_level_);
+
+            res_bitwise.second= internal::switching<uint64_t>::index_least_significant(bucket_empty_flags_second_level_[res_bitwise.first]);
+
+
+            std::cout << "result old:\t\t" << res.first << "\t" << res.second << std::endl;
+            std::cout << "result bitwise:\t" << res_bitwise.first << "\t" << res_bitwise.second << std::endl;
+
+
+            return res;
+
+
 /*
             auto digs = std::numeric_limits<key_type>::digits;
             // Bucket Array 0 not empty
@@ -289,7 +319,7 @@ namespace multilayer_radix_pq {
             }
 
 */
-
+/* old loop working properly
             for (int i = 0; i < no_of_arrays_; i++) {
                 if (bucket_empty_flags_[i].first) {
                     for (int j = 0; j <= no_of_buckets_; j++){
@@ -301,7 +331,7 @@ namespace multilayer_radix_pq {
             }
 
             return {-1,-1};
-
+*/
         }
 
 
@@ -321,9 +351,14 @@ namespace multilayer_radix_pq {
             // check whether monotonicity is upheld
             assert(key >= 0);
             assert(key >= last_minimum_);
+            assert((key - last_minimum_) < C);
+            // if
+            if(!ALLOW_N_OVERFLOW){
+                assert((key - last_minimum_) < C);
+            }
 
             // if key minimum last minimum exceeds range [m, m+C] push into N  bucket
-            if((key - last_minimum_) > C  & !reseeding_n_flag_){
+            if((key > C) && ((key - last_minimum_) < C)  && !reseeding_n_flag_){
                 n_bucket_.push({key, val});
                 if(key < N_bucket_minimum_) {
                     N_bucket_minimum_ = key;

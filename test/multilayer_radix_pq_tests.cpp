@@ -24,8 +24,9 @@ TEST(mlrpqTest, NotEmptyAfterPush){
 }
 
 TEST(mlrpqTest, NotEmptyAfterPushIntoNBucket){
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 3> mlrpq;
+    multilayer_radix_pq::multilayer_radix_pq<uint32_t, int, 3> mlrpq;
     mlrpq.push(uint64_t(pow(2,24)),1);
+
     bool res = mlrpq.empty();
 
     ASSERT_EQ(false, res);
@@ -142,7 +143,7 @@ TEST(mlrpqTest, QueuesDifferentRadixReturnSameArray){
 
     bool eq = true;
 
-    std::vector<KEY_TYPE> ar{0,1,2,3,5,64,129,257,986,2049,16895,28675,2406987,3698574,7845329,12896586, 4294967295};
+    std::vector<KEY_TYPE> ar{0,1,2,3,5,64,129,257,986,2049,16895,28675,2406987,3698574,7845329,12896586};
     size_t size = ar.size();
 
     for (int i=0; i <= size; i++){
@@ -226,11 +227,11 @@ TEST(mlrpqTest, QueueReturnsCorrectArrayWithIntermittendPop){
         mlrpq.pop();
 
     }
-
+/*
     for (int r = 0; r < ar_res.size(); r++){
         std::cout << "mlrpq: " << res_mlrpq[r] << "\t res: " << ar_res[r] << std::endl;
     }
-
+*/
     ASSERT_EQ(ar_res, res_mlrpq);
 
 

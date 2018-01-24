@@ -4,6 +4,7 @@
 //
 
 #include "include/multilayer_radix_pq.h"
+#include <iostream>
 
 typedef struct data
 {
@@ -12,17 +13,18 @@ typedef struct data
 
 int main() {
 
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, DATA, 3> mlrpq;
+    multilayer_radix_pq::multilayer_radix_pq<uint32_t, DATA, 3> mlrpq;
     DATA val;
+    mlrpq.push(0, val);
+    mlrpq.push(128, val);
+    std::cout << mlrpq.top().first << std::endl;
+    mlrpq.pop();
+    std::cout << mlrpq.top().first << std::endl;
+    mlrpq.push(132, val);
+    mlrpq.pop();
+    std::cout << mlrpq.top().first << std::endl;
+    mlrpq.pop();
 
-    mlrpq.empty();
-    mlrpq.push(129, val);
-    mlrpq.push(6854985, val);
-    mlrpq.empty();
-    mlrpq.top();
-    mlrpq.pop();
-    mlrpq.top();
-    mlrpq.pop();
-    mlrpq.empty();
+    std::cout << mlrpq.empty() << std::endl;
 
 }
