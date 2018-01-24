@@ -11,6 +11,7 @@
 #include <iterator>
 #include <cassert>
 #include <climits>
+#include <bitset>
 
 #include <iostream>
 
@@ -63,14 +64,17 @@ namespace internal {
 
 
 namespace multilayer_radix_pq {
-
+#ifdef dev_temp
+    template<typename KeyType, typename ValueType, size_t RADIX_BITS, KeyType C = std::numeric_limits<KeyType>::max(), bool ALLOW_N_OVERFLOW = false>
+#else
     template<typename KeyType, typename ValueType, size_t RADIX_BITS, bool ALLOW_N_OVERFLOW = false>
+#endif
     class multilayer_radix_pq {
 
     public:
         using key_type = KeyType;
         using value_type = ValueType;
-#ifdef LIMITMEMORY
+#ifdef LIMITMEMORY //has no effect in no-stxxl branch
         //static constexpr auto block_size = size_t(1) << 18;
         using block_type = std::queue<std::pair<key_type, value_type>>;
 #else
@@ -79,24 +83,24 @@ namespace multilayer_radix_pq {
 
 
     private:
-        //static const size_t radix_ = size_t(1) << RADIX_BITS; // manpe.n: constexpr? (also for later instances)
-        // aherzog: why? needs to be static, is there a difference between static const and static constexpr?
         static constexpr size_t radix_ = size_t(1) << RADIX_BITS;
         static const size_t no_of_buckets_ = radix_;
-        // estimate C as upper limit of key_type
-        // this is a really bad estimate since no keys will be pushed into N bucket
-        static const size_t C = std::numeric_limits<key_type>::max();
-        static const auto C_BITS_ = std::numeric_limits<key_type>::digits;
+#ifndef dev_temp
+        static const key_type C = std::numeric_limits<key_type>::max();
+#endif
+        static const auto C_BITS_ = sizeof(C)*8;
         static const size_t no_of_arrays_ = (C_BITS_/RADIX_BITS)+1;
         key_type last_minimum_;
         key_type N_bucket_minimum_;
         std::pair<int64_t, int64_t> current_minimum_index_;
         std::array<std::array<block_type, no_of_buckets_>, no_of_arrays_> buckets_;
+        /// why are these uint64??
         std::array<std::array<uint64_t, no_of_buckets_>, no_of_arrays_> bucket_minimum_;
 
         /// go for uint64 since there will not be longer arrays of buckets anyway
-        uint bucket_empty_flags_first_level_;
-        std::array<uint, no_of_arrays_> bucket_empty_flags_second_level_;
+        /// trying bitset
+        std::bitset<no_of_arrays_> bucket_empty_flags_first_level_;
+        std::array<std::bitset<no_of_buckets_>, no_of_arrays_> bucket_empty_flags_second_level_;
 
         std::array<std::pair<bool, std::array<bool, no_of_buckets_>>, no_of_arrays_> bucket_empty_flags_;
         block_type n_bucket_;
@@ -109,12 +113,13 @@ namespace multilayer_radix_pq {
                 last_minimum_(std::numeric_limits<key_type>::min()),
                 reseeding_n_flag_(false),
                 first_push_flag_(true),
-                N_bucket_minimum_(std::numeric_limits<key_type>::max()),
+                N_bucket_minimum_(std::numeric_limits<key_type>::min()),
                 current_minimum_index_({-1, -1}),
                 bucket_empty_flags_first_level_(0),
                 bucket_empty_flags_second_level_({})
         {
             initializeBucketMinima(no_of_arrays_);
+            std::cout << C << std::endl;
         };
 
 
@@ -350,7 +355,6 @@ namespace multilayer_radix_pq {
     public:
         void push(key_type key, const value_type& val) {
             // manpen: replace static_cast<>(key) with encoder
-
             // check whether monotonicity is upheld
             assert(key >= 0);
             assert(key >= last_minimum_);
