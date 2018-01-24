@@ -20,6 +20,8 @@
 #define LIMITMEMORY
 #define COMPILERAGNOSTIC
 
+//#define dev_temp
+
 namespace internal {
 
     template<typename KeyType>
@@ -52,7 +54,7 @@ namespace internal {
                 return 0;
             }
             else{
-                return __builtin_ffs(empty_flag)-1;
+                return __builtin_ffsl(empty_flag)-1;
             }
         }
     };
@@ -262,7 +264,7 @@ namespace multilayer_radix_pq {
             /// and then find the first non empty bucket (starting with 2^0, 2^1 ...)
             /// so we are looking for the least significant bit, not the hightest!
             /// THERE ARE NO BUCKETS B(k, 0) k > 0!
-
+#ifdef dev_temp
             std::pair<int64_t, int64_t> res {-1, -1};
             std::pair<int64_t, int64_t> res_bitwise {-1, -1};
 
@@ -319,7 +321,8 @@ namespace multilayer_radix_pq {
             }
 
 */
-/* old loop working properly
+#else
+// old loop working properly
             for (int i = 0; i < no_of_arrays_; i++) {
                 if (bucket_empty_flags_[i].first) {
                     for (int j = 0; j <= no_of_buckets_; j++){
@@ -331,7 +334,7 @@ namespace multilayer_radix_pq {
             }
 
             return {-1,-1};
-*/
+#endif
         }
 
 
