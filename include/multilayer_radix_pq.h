@@ -19,9 +19,9 @@
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 
 #define LIMITMEMORY
-#define COMPILERAGNOSTIC
+//#define COMPILERAGNOSTIC
 
-//#define dev_temp
+#define dev_temp
 
 namespace internal {
 
@@ -48,11 +48,14 @@ namespace internal {
             return (std::numeric_limits<uint64_t>::digits - __builtin_clzll(key ^ last)) - 1;
 #endif
         }
+        static constexpr auto index_least_significant(key_type empty_flag){
+            return __builtin_ffsl(empty_flag);
 
-        static constexpr size_t index_least_significant(key_type empty_flag){
-            auto tmp = __builtin_ffs(empty_flag);
+        }
+
+        static constexpr auto index_least_significant_zero_bucket(key_type empty_flag){
             if (empty_flag == 0){
-                return 0;
+                return -1;
             }
             else{
                 return __builtin_ffsl(empty_flag)-1;
@@ -64,11 +67,8 @@ namespace internal {
 
 
 namespace multilayer_radix_pq {
-#ifdef dev_temp
-    template<typename KeyType, typename ValueType, size_t RADIX_BITS, KeyType C = std::numeric_limits<KeyType>::max(), bool ALLOW_N_OVERFLOW = false>
-#else
+    //template<typename KeyType, typename ValueType, size_t RADIX_BITS, KeyType C = std::numeric_limits<KeyType>::max(), bool ALLOW_N_OVERFLOW = false>
     template<typename KeyType, typename ValueType, size_t RADIX_BITS, bool ALLOW_N_OVERFLOW = false>
-#endif
     class multilayer_radix_pq {
 
     public:
@@ -85,41 +85,32 @@ namespace multilayer_radix_pq {
     private:
         static constexpr size_t radix_ = size_t(1) << RADIX_BITS;
         static const size_t no_of_buckets_ = radix_;
-#ifndef dev_temp
+        /// TODO C as template parameter
         static const key_type C = std::numeric_limits<key_type>::max();
-#endif
         static const auto C_BITS_ = sizeof(C)*8;
         static const size_t no_of_arrays_ = (C_BITS_/RADIX_BITS)+1;
         key_type last_minimum_;
         key_type N_bucket_minimum_;
         std::pair<int64_t, int64_t> current_minimum_index_;
         std::array<std::array<block_type, no_of_buckets_>, no_of_arrays_> buckets_;
-        /// why are these uint64??
-        std::array<std::array<uint64_t, no_of_buckets_>, no_of_arrays_> bucket_minimum_;
-
-        /// go for uint64 since there will not be longer arrays of buckets anyway
-        /// trying bitset
-        std::bitset<no_of_arrays_> bucket_empty_flags_first_level_;
-        std::array<std::bitset<no_of_buckets_>, no_of_arrays_> bucket_empty_flags_second_level_;
-
-        std::array<std::pair<bool, std::array<bool, no_of_buckets_>>, no_of_arrays_> bucket_empty_flags_;
+        std::array<std::array<key_type, no_of_buckets_>, no_of_arrays_> bucket_minimum_;
+        key_type bucket_empty_flags_first_level_;
+        std::array<key_type, no_of_arrays_> bucket_empty_flags_second_level_;
         block_type n_bucket_;
         bool reseeding_n_flag_;
         bool first_push_flag_;
 
     public:
         explicit multilayer_radix_pq() :
-                bucket_empty_flags_({}),
                 last_minimum_(std::numeric_limits<key_type>::min()),
                 reseeding_n_flag_(false),
                 first_push_flag_(true),
-                N_bucket_minimum_(std::numeric_limits<key_type>::min()),
+                N_bucket_minimum_(std::numeric_limits<key_type>::max()),
                 current_minimum_index_({-1, -1}),
                 bucket_empty_flags_first_level_(0),
-                bucket_empty_flags_second_level_({})
+                bucket_empty_flags_second_level_({0})
         {
             initializeBucketMinima(no_of_arrays_);
-            std::cout << C << std::endl;
         };
 
 
@@ -158,18 +149,6 @@ namespace multilayer_radix_pq {
                         push(temp_element.first, temp_element.second);
 
                     } else {
-                        // manpen: If we have the invariant that no element is larger than
-                        // current-min + C, and the queue structure can accommodate
-                        // at least an interval of  size C, we do NOT need to push
-                        // elements in temp_n_bucket. While it's a nice feature, I
-                        // would strongly suggest to make a template parameter which
-                        // by default forbids this behaviour and then use an assertion to check
-                        // that no index is too large to overflow N (otherwise the whole IO analysis
-                        // falls apart). Include this parameter also in this if
-                        // statement to allow the compiler to optimise it away in
-                        // case overflowing is disallowed
-
-
                         // element remains in N bucket after reseeding
                         // push element in temporary N bucket
                         temp_n_bucket.push(temp_element);
@@ -195,12 +174,7 @@ namespace multilayer_radix_pq {
             // call pop again after reorganization
         }
 
-        // manpen: It somehow seems unnatural to use a pair rather than
-        // two arguments here. Won't impact performance though
-        // manpen: You really want to implement it using word-wise parallelism
-
         void updateBucketEmptyFlags(const std::pair<int64_t, int64_t> pos_update) {
-            /// updating the bit field flags works fine
             if (pos_update.first == 0){
                 // after reorganization xor the bit of now empty bucket to be zero
                 bucket_empty_flags_second_level_[pos_update.first] ^= (1 << pos_update.second);
@@ -212,36 +186,13 @@ namespace multilayer_radix_pq {
             else{
                 // offset the shift by -1, Buckets B(k, 0) k >= 1 are always empty, to reflect
                 // this behavior in bit fields the shift is needed
-                bucket_empty_flags_second_level_[pos_update.first] ^= (1 << (pos_update.second-1));
+                bucket_empty_flags_second_level_[pos_update.first] ^= (1 << (pos_update.second));
                 // if array is empty, xor the bit in first level flags to zero
                 if (bucket_empty_flags_second_level_[pos_update.first] == 0) {
                     bucket_empty_flags_first_level_ ^= (1 << (pos_update.first));
                 }
             }
-
-            // check if bucket is empty
-            /// to be removed as soon as bit field functionality is up and running
-            if (buckets_[pos_update.first][pos_update.second].empty()){
-                bucket_empty_flags_[pos_update.first].second[pos_update.second] = 0;
-
-                // manpen: As already discussed you do not want to count, but
-                // rather find a non-empty bucket; so simply break the loop
-                // on the first non-empty bucket
-
-                // if bucket became empty, check if whole array is empty
-                // temporary variable to count empty buckets
-                int temp = 0;
-                for (int j = 0; j < no_of_buckets_; j++){
-                    // if bucket is empty increase temp variable
-                    if (buckets_[pos_update.first][j].empty()){ temp += 1; }
-                }
-                // if number of empty buckets equals total number of buckets assign array flag to zero
-                if(temp == no_of_buckets_) {
-                    bucket_empty_flags_[pos_update.first].first = 0;
-                }
-            }
         }
-
 
         const std::pair <size_t, size_t> calculateBucket(uint64_t key, uint64_t last) const {
             if(key == last) {
@@ -259,87 +210,19 @@ namespace multilayer_radix_pq {
 
         // manpen: const this-pointer!
         std::pair<int64_t, int64_t> calculateMinimumIndex() {
-            using key_type_temp = int64_t;
-            // manpen: You really want to implement that more efficient using
-            // word-wise bit parallelism (e.g. keep a 32 or 64 empty flags
-            // in a word and find high sig bit and stuff ;))
-            /// This is absolutely not working properly! See unit test QueueReturnsCorrectArray
-            /// two level empty_flag words are working properly, this method should
-            /// calculate the first non empty array (starting with 2^0 !! , 2^1, 2^2 ...)
-            /// and then find the first non empty bucket (starting with 2^0, 2^1 ...)
-            /// so we are looking for the least significant bit, not the hightest!
-            /// THERE ARE NO BUCKETS B(k, 0) k > 0!
-#ifdef dev_temp
-            std::pair<int64_t, int64_t> res {-1, -1};
-            std::pair<int64_t, int64_t> res_bitwise {-1, -1};
+            std::pair<int64_t, int64_t> res_bitwise {};
 
+            res_bitwise.first = internal::switching<key_type>::index_least_significant_zero_bucket(bucket_empty_flags_first_level_);
 
-            for (int i = 0; i < no_of_arrays_; i++) {
-                if (bucket_empty_flags_[i].first) {
-                    for (int j = 0; j <= no_of_buckets_; j++){
-                        if (bucket_empty_flags_[i].second[j]) {
-                            res.first = i;
-                            res.second = j;
-                        }
-                    }
-                }
+            if (res_bitwise.first == 0){
+                res_bitwise.second = internal::switching<key_type>::index_least_significant_zero_bucket(bucket_empty_flags_second_level_[res_bitwise.first]);
+            }
+            else{
+                res_bitwise.second = internal::switching<key_type>::index_least_significant(bucket_empty_flags_second_level_[res_bitwise.first]);
+                std::cout << res_bitwise.first << " " << res_bitwise.second << std::endl;
             }
 
-            res_bitwise.first = internal::switching<uint64_t>::index_least_significant(bucket_empty_flags_first_level_);
-
-            res_bitwise.second= internal::switching<uint64_t>::index_least_significant(bucket_empty_flags_second_level_[res_bitwise.first]);
-
-
-            std::cout << "result old:\t\t" << res.first << "\t" << res.second << std::endl;
-            std::cout << "result bitwise:\t" << res_bitwise.first << "\t" << res_bitwise.second << std::endl;
-
-
-            return res;
-
-
-/*
-            auto digs = std::numeric_limits<key_type>::digits;
-            // Bucket Array 0 not empty
-            if (bucket_empty_flags_first_level_ & (1 << 0)) {
-                // If Bucket B(0, 0) not empty
-                if (bucket_empty_flags_second_level_[0] == 0) {
-                    return {0, 0};
-                }
-                // check buckets B(0, k) k >= 1
-                else{
-                    for (int j = 0; j < digs; j++){
-                        if (bucket_empty_flags_second_level_[0] & (1 << j)){
-                            return {0, j};
-                        }
-                    }
-                }
-            }
-
-            for (int i = 1; i < digs; i++){
-                if (bucket_empty_flags_first_level_ & (1 << i)){
-                    for (int j = 0; j < digs; j++){
-                        if (bucket_empty_flags_second_level_[i] & (1 << j)){
-                            return {i,j+1};
-                        }
-                    }
-                }
-            }
-
-*/
-#else
-// old loop working properly
-            for (int i = 0; i < no_of_arrays_; i++) {
-                if (bucket_empty_flags_[i].first) {
-                    for (int j = 0; j <= no_of_buckets_; j++){
-                        if (bucket_empty_flags_[i].second[j]) {
-                            return std::pair<int64_t, int64_t>(i,j);
-                        }
-                    }
-                }
-            }
-
-            return {-1,-1};
-#endif
+            return res_bitwise;
         }
 
 
@@ -355,6 +238,8 @@ namespace multilayer_radix_pq {
     public:
         void push(key_type key, const value_type& val) {
             // manpen: replace static_cast<>(key) with encoder
+            // encoder from radix-heap is not a drop in since it does not account for assertions against C
+            // pushing 0 eg results in failure since the encoded version of 0 is a larger number than C
             // check whether monotonicity is upheld
             assert(key >= 0);
             assert(key >= last_minimum_);
@@ -377,14 +262,8 @@ namespace multilayer_radix_pq {
             const auto pos = calculateBucket(static_cast<uint64_t>(key), last_minimum_);
 
             // update bucket empty flags for calculated bucket
-
-            bucket_empty_flags_[pos.first].first = true;
-            bucket_empty_flags_[pos.first].second[pos.second] = true;
-
-            /// okay
             bucket_empty_flags_first_level_ |= (1 << pos.first);
-            bucket_empty_flags_second_level_[pos.first] |= (1 << pos.second);
-            /// okay
+            bucket_empty_flags_second_level_[pos.first] |= (1 << pos.second); //TODO check if this works for flags larger than 32 bits on server, my computer fails
 
             // update bucket minimum if necessary
             if (key < bucket_minimum_[pos.first][pos.second]) {
@@ -460,7 +339,8 @@ namespace multilayer_radix_pq {
 
                 // update flags for _old_ bucket
                 updateBucketEmptyFlags(pos_minimum_element_);
-
+                // reinitialize the bucket minimum of the just emptied bucket
+                bucket_minimum_[pos_minimum_element_.first][pos_minimum_element_.second] = std::numeric_limits<key_type>::max();
                 // call pop again after reorganization
                 pop();
                 return;
