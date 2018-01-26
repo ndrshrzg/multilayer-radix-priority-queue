@@ -3,8 +3,8 @@
 // andreas.herzog@stud.uni-frankfurt.de
 //
 
-//#include <stxxl/queue>
-#include <queue>
+#include <stxxl/queue>
+//#include <queue>
 #include <array>
 #include <cmath>
 #include <limits>
@@ -94,9 +94,9 @@ namespace multilayer_radix_pq {
     public:
         using key_type = KeyType;
         using value_type = ValueType;
-        using block_type = std::queue<std::pair<key_type, value_type>>;
+        //using block_type = std::queue<std::pair<key_type, value_type>>;
         //static constexpr auto block_size = size_t(1) << 18; // limit memory
-        //using block_type = stxxl::queue<std::pair<key_type, value_type>>;
+        using block_type = stxxl::queue<std::pair<key_type, value_type>>;
 
     private:
         static constexpr size_t radix_ = size_t(1) << RADIX_BITS;
