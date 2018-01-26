@@ -11,9 +11,6 @@
 #include <iterator>
 #include <cassert>
 #include <climits>
-#include <bitset>
-
-#include <iostream>
 
 #ifndef MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
@@ -21,9 +18,65 @@
 #define LIMITMEMORY
 //#define COMPILERAGNOSTIC
 
-#define dev_temp
-
 namespace internal {
+    // TODO replace __builtin with tlx whis is already part of stxxl
+    template <size_t radix>
+    struct BitField{
+        // type of segments
+        using data_type = uint64_t;
+        // number of bits of every segment dependent on set data_type
+        static constexpr size_t segment_bits = sizeof(data_type)*8;
+        // number of segments needes determined by radix passed as template parameter
+        static constexpr size_t number_of_segments_ = (radix + segment_bits - 1) / segment_bits;
+        // array that holds number of segments
+        std::array<uint64_t, number_of_segments_> bit_field;
+
+        void setBit (size_t idx){
+            //assert(idx < radix); // this assertion is only relevant for second level calculations!
+            // set Bit in segment idx/segment_bits at position idx mod segment_bits to 1
+            bit_field[idx / segment_bits] |= data_type(1) << (idx % segment_bits);
+
+        };
+
+        void clearBit (size_t idx){
+            //assert(idx < radix); // this assertion is only relevant for second level calculations!
+            // set Bit in segment idx/segment_bits at position idx mod segment_bits to 0 using NAND
+            bit_field[idx / segment_bits] &= ~(data_type(1) << (idx % segment_bits));
+
+        };
+
+        bool isEmpty(){
+            // iterate through field and check if every segment is zero
+            for (int seg = 0; seg < number_of_segments_; seg++){
+                if (bit_field[seg]){
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        int64_t leastSignificantBit(){
+                // iterate through segments, continue if segments are 0
+                for (int seg = 0; seg < number_of_segments_; seg++){
+                    if (!bit_field[seg]) {
+                        continue;
+                    }
+                    // if segment non-zero, return least significant bit plus the number of segments passed times
+                    // bit size of a segment
+                    return (__builtin_ffsl(bit_field[seg])-1) + (seg * segment_bits);
+                }
+            // if all segments are 0, return -1 indicating emptiness
+            return -1;
+        };
+
+        void initializeSegments(){
+            // iterate through segments and set them to 0, only called during construction of datastructure
+            for (int seg = 0; seg < number_of_segments_; seg++){
+                bit_field[seg] = size_t(0);
+            }
+        }
+
+    };
 
     template<typename KeyType>
     class switching{
@@ -49,17 +102,8 @@ namespace internal {
 #endif
         }
         static constexpr auto index_least_significant(key_type empty_flag){
-            return __builtin_ffsl(empty_flag);
+            return __builtin_ffsl(empty_flag)-1;
 
-        }
-
-        static constexpr auto index_least_significant_zero_bucket(key_type empty_flag){
-            if (empty_flag == 0){
-                return -1;
-            }
-            else{
-                return __builtin_ffsl(empty_flag)-1;
-            }
         }
     };
 }
@@ -94,8 +138,8 @@ namespace multilayer_radix_pq {
         std::pair<int64_t, int64_t> current_minimum_index_;
         std::array<std::array<block_type, no_of_buckets_>, no_of_arrays_> buckets_;
         std::array<std::array<key_type, no_of_buckets_>, no_of_arrays_> bucket_minimum_;
-        key_type bucket_empty_flags_first_level_;
-        std::array<key_type, no_of_arrays_> bucket_empty_flags_second_level_;
+        internal::BitField<radix_> bucket_empty_flags_first_level_;
+        std::array<internal::BitField<radix_>, no_of_arrays_> bucket_empty_flags_second_level_;
         block_type n_bucket_;
         bool reseeding_n_flag_;
         bool first_push_flag_;
@@ -106,15 +150,22 @@ namespace multilayer_radix_pq {
                 reseeding_n_flag_(false),
                 first_push_flag_(true),
                 N_bucket_minimum_(std::numeric_limits<key_type>::max()),
-                current_minimum_index_({-1, -1}),
-                bucket_empty_flags_first_level_(0),
-                bucket_empty_flags_second_level_({0})
+                current_minimum_index_({-1, -1})
         {
             initializeBucketMinima(no_of_arrays_);
+            initializeBitFields(no_of_arrays_);
         };
 
 
     private:
+        void initializeBitFields(size_t arr){
+            bucket_empty_flags_first_level_.initializeSegments();
+            for (int i=0; i < arr; i++){
+                // during construction set all segments of empty flag BitField to 0
+                bucket_empty_flags_second_level_[i].initializeSegments();
+            }
+        }
+
         void initializeBucketMinima(size_t arr){
             // initialize array with bucket minima to be maximum
             for (int i=0; i < arr; i++){
@@ -167,32 +218,16 @@ namespace multilayer_radix_pq {
                 }
 
             }
-
-
             // set reseeding from N flag to false
             reseeding_n_flag_ = 0;
-            // call pop again after reorganization
         }
 
         void updateBucketEmptyFlags(const std::pair<int64_t, int64_t> pos_update) {
-            if (pos_update.first == 0){
-                // after reorganization xor the bit of now empty bucket to be zero
-                bucket_empty_flags_second_level_[pos_update.first] ^= (1 << pos_update.second);
-                // if array is empty, xor the bit in first level flags to zero
-                if (bucket_empty_flags_second_level_[pos_update.first] == 0){
-                    bucket_empty_flags_first_level_ ^= (1 << pos_update.first);
-                }
+            bucket_empty_flags_second_level_[pos_update.first].clearBit(pos_update.second);
+            if (bucket_empty_flags_second_level_[pos_update.first].isEmpty() == true) {
+                bucket_empty_flags_first_level_.clearBit(pos_update.first);
             }
-            else{
-                // offset the shift by -1, Buckets B(k, 0) k >= 1 are always empty, to reflect
-                // this behavior in bit fields the shift is needed
-                bucket_empty_flags_second_level_[pos_update.first] ^= (1 << (pos_update.second));
-                // if array is empty, xor the bit in first level flags to zero
-                if (bucket_empty_flags_second_level_[pos_update.first] == 0) {
-                    bucket_empty_flags_first_level_ ^= (1 << (pos_update.first));
-                }
-            }
-        }
+        };
 
         const std::pair <size_t, size_t> calculateBucket(uint64_t key, uint64_t last) const {
             if(key == last) {
@@ -211,16 +246,10 @@ namespace multilayer_radix_pq {
         // manpen: const this-pointer!
         std::pair<int64_t, int64_t> calculateMinimumIndex() {
             std::pair<int64_t, int64_t> res_bitwise {};
-
-            res_bitwise.first = internal::switching<key_type>::index_least_significant_zero_bucket(bucket_empty_flags_first_level_);
-
-            if (res_bitwise.first == 0){
-                res_bitwise.second = internal::switching<key_type>::index_least_significant_zero_bucket(bucket_empty_flags_second_level_[res_bitwise.first]);
-            }
-            else{
-                res_bitwise.second = internal::switching<key_type>::index_least_significant(bucket_empty_flags_second_level_[res_bitwise.first]);
-                std::cout << res_bitwise.first << " " << res_bitwise.second << std::endl;
-            }
+            // get least significant bit in first level
+            res_bitwise.first = bucket_empty_flags_first_level_.leastSignificantBit();
+            // get least significant bit in second level array calculated above
+            res_bitwise.second = bucket_empty_flags_second_level_[res_bitwise.first].leastSignificantBit();
 
             return res_bitwise;
         }
@@ -262,8 +291,8 @@ namespace multilayer_radix_pq {
             const auto pos = calculateBucket(static_cast<uint64_t>(key), last_minimum_);
 
             // update bucket empty flags for calculated bucket
-            bucket_empty_flags_first_level_ |= (1 << pos.first);
-            bucket_empty_flags_second_level_[pos.first] |= (1 << pos.second); //TODO check if this works for flags larger than 32 bits on server, my computer fails
+            bucket_empty_flags_first_level_.setBit(pos.first);
+            bucket_empty_flags_second_level_[pos.first].setBit(pos.second);
 
             // update bucket minimum if necessary
             if (key < bucket_minimum_[pos.first][pos.second]) {
@@ -284,10 +313,10 @@ namespace multilayer_radix_pq {
                 current_minimum_index_.second = pos.second;
             }
             // when reseeding from N, current minimum index will always be (0, 0)
-            else if (reseeding_n_flag_){
-                current_minimum_index_.first = 0;
-                current_minimum_index_.second = 0;
-            }
+            //else if (reseeding_n_flag_){
+            //    current_minimum_index_.first = 0;
+            //    current_minimum_index_.second = 0;
+            //}
             // update current minimum index without calling the expensive update function
             else{
                 if (pos.first <= current_minimum_index_.first){
