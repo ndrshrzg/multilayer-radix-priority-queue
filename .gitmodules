@@ -1,3 +1,6 @@
 [submodule "libs/stxxl"]
 	path = libs/stxxl
 	url = https://github.com/stxxl/stxxl
+[submodule "tlx"]
+	path = tlx
+	url = https://github.com/tlx/tlx

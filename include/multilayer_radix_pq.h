@@ -11,15 +11,13 @@
 #include <iterator>
 #include <cassert>
 #include <climits>
+#include "tlx/math/clz.hpp"
+#include "tlx/math/ffs.hpp"
 
 #ifndef MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MULTILAYER_RADIX_PQ_H
 
-#define LIMITMEMORY
-//#define COMPILERAGNOSTIC
-
 namespace internal {
-    // TODO replace __builtin with tlx whis is already part of stxxl
     template <size_t radix>
     struct BitField{
         // type of segments
@@ -63,7 +61,7 @@ namespace internal {
                     }
                     // if segment non-zero, return least significant bit plus the number of segments passed times
                     // bit size of a segment
-                    return (__builtin_ffsl(bit_field[seg])-1) + (seg * segment_bits);
+                    return (tlx::ffs(bit_field[seg])-1) + (seg * segment_bits);
                 }
             // if all segments are 0, return -1 indicating emptiness
             return -1;
@@ -84,26 +82,10 @@ namespace internal {
         using key_type = KeyType;
 
         static constexpr size_t index_highest_significant (key_type key, key_type last){
-#ifdef COMPILERAGNOSTIC
-            auto key_xor_last = key ^ last;
-            auto digits = std::numeric_limits<key_type>::digits;
-
-            size_t index = 0;
-            for (size_t i = sizeof(key_xor_last) * CHAR_BIT; i--; )
-            {
-                if ((key_xor_last >> i) == 1){
-                    return (digits - index) - 1;
-                }
-                index++;
-            }
-            return (digits - index) - 1;
-#else
-            return (std::numeric_limits<uint64_t>::digits - __builtin_clzll(key ^ last)) - 1;
-#endif
+            return (std::numeric_limits<uint64_t>::digits - tlx::clz<uint64_t>(key ^ last)) - 1;
         }
         static constexpr auto index_least_significant(key_type empty_flag){
-            return __builtin_ffsl(empty_flag)-1;
-
+            return tlx::ffs(empty_flag)-1;
         }
     };
 }
@@ -111,6 +93,7 @@ namespace internal {
 
 
 namespace multilayer_radix_pq {
+    // TODO C as template parameter with default numeric_limits<key_type>::max()
     //template<typename KeyType, typename ValueType, size_t RADIX_BITS, KeyType C = std::numeric_limits<KeyType>::max(), bool ALLOW_N_OVERFLOW = false>
     template<typename KeyType, typename ValueType, size_t RADIX_BITS, bool ALLOW_N_OVERFLOW = false>
     class multilayer_radix_pq {
@@ -118,19 +101,15 @@ namespace multilayer_radix_pq {
     public:
         using key_type = KeyType;
         using value_type = ValueType;
-#ifdef LIMITMEMORY //has no effect in no-stxxl branch
-        //static constexpr auto block_size = size_t(1) << 18;
         using block_type = std::queue<std::pair<key_type, value_type>>;
-#else
-        using block_type = stxxl::queue<std::pair<key_type, value_type>>;
-#endif
+        //static constexpr auto block_size = size_t(1) << 18; // limit memory
+        //using block_type = stxxl::queue<std::pair<key_type, value_type>>;
 
 
     private:
         static constexpr size_t radix_ = size_t(1) << RADIX_BITS;
         static const size_t no_of_buckets_ = radix_;
-        /// TODO C as template parameter
-        static const key_type C = std::numeric_limits<key_type>::max();
+        static const key_type C = std::numeric_limits<key_type>::max(); // replace with template parameter
         static const auto C_BITS_ = sizeof(C)*8;
         static const size_t no_of_arrays_ = (C_BITS_/RADIX_BITS)+1;
         key_type last_minimum_;

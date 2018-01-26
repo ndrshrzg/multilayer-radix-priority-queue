@@ -2,8 +2,14 @@
 # andreas.herzog@stud.uni-frankfurt.de
 
 
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.5)
 project(multilayer_radix_priority_queue)
+
+#INCLUDE TLX
+
+add_subdirectory(tlx)
+include_directories(tlx)
+
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTXXL_PARALLEL=1")
 
@@ -58,10 +64,10 @@ endif()
 
 add_executable(multilayer_radix_priority_queue main.cpp include/multilayer_radix_pq.h)
 #target_link_libraries(multilayer_radix_priority_queue ${STXXL_LIBRARIES})
-target_link_libraries(multilayer_radix_priority_queue)
+target_link_libraries(multilayer_radix_priority_queue tlx)
 add_executable(benchmark_mlrpq benchmark.cpp include/multilayer_radix_pq.h)
 #target_link_libraries(benchmark_mlrpq ${STXXL_LIBRARIES})
-target_link_libraries(benchmark_mlrpq)
+target_link_libraries(benchmark_mlrpq tlx)
 add_executable(multilayer_radix_priority_queue_test test/multilayer_radix_pq_tests.cpp include/multilayer_radix_pq.h)
 #target_link_libraries(multilayer_radix_priority_queue_test gtest_main ${STXXL_LIBRARIES})
-target_link_libraries(multilayer_radix_priority_queue_test gtest_main)
+target_link_libraries(multilayer_radix_priority_queue_test gtest_main tlx)
