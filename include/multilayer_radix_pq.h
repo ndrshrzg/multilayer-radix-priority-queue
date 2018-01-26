@@ -30,14 +30,12 @@ namespace internal {
         std::array<uint64_t, number_of_segments_> bit_field;
 
         void setBit (size_t idx){
-            //assert(idx < radix); // this assertion is only relevant for second level calculations!
             // set Bit in segment idx/segment_bits at position idx mod segment_bits to 1
             bit_field[idx / segment_bits] |= data_type(1) << (idx % segment_bits);
 
         };
 
         void clearBit (size_t idx){
-            //assert(idx < radix); // this assertion is only relevant for second level calculations!
             // set Bit in segment idx/segment_bits at position idx mod segment_bits to 0 using NAND
             bit_field[idx / segment_bits] &= ~(data_type(1) << (idx % segment_bits));
 
@@ -77,15 +75,12 @@ namespace internal {
     };
 
     template<typename KeyType>
-    class switching{
+    class bit_calculations{
     public:
         using key_type = KeyType;
 
         static constexpr size_t index_highest_significant (key_type key, key_type last){
             return (std::numeric_limits<uint64_t>::digits - tlx::clz<uint64_t>(key ^ last)) - 1;
-        }
-        static constexpr auto index_least_significant(key_type empty_flag){
-            return tlx::ffs(empty_flag)-1;
         }
     };
 }
@@ -93,9 +88,7 @@ namespace internal {
 
 
 namespace multilayer_radix_pq {
-    // TODO C as template parameter with default numeric_limits<key_type>::max()
-    //template<typename KeyType, typename ValueType, size_t RADIX_BITS, KeyType C = std::numeric_limits<KeyType>::max(), bool ALLOW_N_OVERFLOW = false>
-    template<typename KeyType, typename ValueType, size_t RADIX_BITS, bool ALLOW_N_OVERFLOW = false>
+    template<typename KeyType, typename ValueType, size_t RADIX_BITS, KeyType C = std::numeric_limits<KeyType>::max(), bool ALLOW_N_OVERFLOW = false>
     class multilayer_radix_pq {
 
     public:
@@ -105,11 +98,9 @@ namespace multilayer_radix_pq {
         //static constexpr auto block_size = size_t(1) << 18; // limit memory
         //using block_type = stxxl::queue<std::pair<key_type, value_type>>;
 
-
     private:
         static constexpr size_t radix_ = size_t(1) << RADIX_BITS;
         static const size_t no_of_buckets_ = radix_;
-        static const key_type C = std::numeric_limits<key_type>::max(); // replace with template parameter
         static const auto C_BITS_ = sizeof(C)*8;
         static const size_t no_of_arrays_ = (C_BITS_/RADIX_BITS)+1;
         key_type last_minimum_;
@@ -157,7 +148,7 @@ namespace multilayer_radix_pq {
             // re initialize bucket minima
             initializeBucketMinima(no_of_arrays_);
             // set reseeding from N flag
-            reseeding_n_flag_ = 1;
+            reseeding_n_flag_ = true;
             // retrieve minimum in N bucket for reorganization
             const key_type reorganization_minimum = N_bucket_minimum_;
             // assign new minimum
@@ -198,7 +189,7 @@ namespace multilayer_radix_pq {
 
             }
             // set reseeding from N flag to false
-            reseeding_n_flag_ = 0;
+            reseeding_n_flag_ = false;
         }
 
         void updateBucketEmptyFlags(const std::pair<int64_t, int64_t> pos_update) {
@@ -213,7 +204,7 @@ namespace multilayer_radix_pq {
                 return {0, 0};
             }
             else{
-                const size_t index_highest_significant = internal::switching<key_type>::index_highest_significant(key, last);
+                const size_t index_highest_significant = internal::bit_calculations<key_type>::index_highest_significant(key, last);
                 const size_t mask = (size_t(1) << (index_highest_significant+1))-1;
                 const size_t i = index_highest_significant/RADIX_BITS;
                 const auto shift = static_cast<size_t>(log2(radix_) * i);
@@ -246,19 +237,22 @@ namespace multilayer_radix_pq {
     public:
         void push(key_type key, const value_type& val) {
             // manpen: replace static_cast<>(key) with encoder
-            // encoder from radix-heap is not a drop in since it does not account for assertions against C
+            // aherzog: encoder from radix-heap is not a drop in since it does not account for assertions against C
             // pushing 0 eg results in failure since the encoded version of 0 is a larger number than C
             // check whether monotonicity is upheld
-            assert(key >= 0);
+            if(first_push_flag_){
+                auto tmp = std::numeric_limits<key_type>::min()+C;
+                last_minimum_ = std::max(key, std::numeric_limits<key_type>::min()+C) - C;
+            }
+
             assert(key >= last_minimum_);
-            assert((key - last_minimum_) < C);
-            // if
+
             if(!ALLOW_N_OVERFLOW){
-                assert((key - last_minimum_) < C);
+                assert((key - last_minimum_) <= C);
             }
 
             // if key minimum last minimum exceeds range [m, m+C] push into N  bucket
-            if((key > C) && ((key - last_minimum_) < C)  && !reseeding_n_flag_){
+            if((key > C) && ((key - last_minimum_) <= C)  && !reseeding_n_flag_){
                 n_bucket_.push({key, val});
                 if(key < N_bucket_minimum_) {
                     N_bucket_minimum_ = key;
@@ -281,21 +275,11 @@ namespace multilayer_radix_pq {
             // push key, value pair into calculated bucket
             buckets_[pos.first][pos.second].push({key, val});
 
-            // manpen: You should avoid ifs that need to be checked for every
-            // element but are only relevant for the first/last item. In this
-            // case you can simply initialise current_min_index with num_lim::max,
-            // or am I missing something? Also try to get rid of the reseeding case.
-
             // set the current minimum index to calculated bucket of first ever push
             if (first_push_flag_) {
                 current_minimum_index_.first = pos.first;
                 current_minimum_index_.second = pos.second;
             }
-            // when reseeding from N, current minimum index will always be (0, 0)
-            //else if (reseeding_n_flag_){
-            //    current_minimum_index_.first = 0;
-            //    current_minimum_index_.second = 0;
-            //}
             // update current minimum index without calling the expensive update function
             else{
                 if (pos.first <= current_minimum_index_.first){

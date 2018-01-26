@@ -24,8 +24,8 @@ TEST(mlrpqTest, NotEmptyAfterPush){
 }
 
 TEST(mlrpqTest, NotEmptyAfterPushIntoNBucket){
-    multilayer_radix_pq::multilayer_radix_pq<uint32_t, int, 3> mlrpq;
-    mlrpq.push(uint64_t(pow(2,24)),1);
+    multilayer_radix_pq::multilayer_radix_pq<uint32_t, int, 3, uint32_t(size_t(1) << 23)> mlrpq;
+    mlrpq.push(uint32_t((size_t(1)<<23) + (size_t(1) << 14)), 1);
 
     bool res = mlrpq.empty();
 
@@ -43,22 +43,22 @@ TEST(mlrpqTest, TopReturnsMinimumElement){
 }
 
 TEST(mlrpqTest, TopReturnsMinimumElementFromNBucket){
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 5> mlrpq;
-    mlrpq.push(size_t(1)<<20, 0);
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 5, uint64_t(1) << 20> mlrpq;
+    mlrpq.push(size_t(1)<<21, 0);
     mlrpq.push((size_t(1)<<20)+1, 0);
 
     uint64_t res = mlrpq.top().first;
-    uint64_t exp = size_t(1)<<20;
+    uint64_t exp = (size_t(1)<<20)+1;
     ASSERT_EQ(exp, res);
 }
 
 TEST(mlrpqTest, TopConstReturnsMinimumElementFromNBucket){
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 5> mlrpq;
-    mlrpq.push(size_t(1)<<20, 0);
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 5, uint64_t(size_t(1) << 20)> mlrpq;
+    mlrpq.push(size_t(1)<<21, 0);
     mlrpq.push((size_t(1)<<20)+1, 0);
 
     uint64_t res = mlrpq.top_const();
-    uint64_t exp = size_t(1)<<20;
+    uint64_t exp = (size_t(1)<<20)+1;
     ASSERT_EQ(exp, res);
 }
 
@@ -97,10 +97,10 @@ TEST(mlrpqTest, PopCrashesWhenEmpty){
 }
 
 TEST(mlrpqTest, QueueReturnsCorrectArray){
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 6, true> mlrpq;
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 6> mlrpq;
     std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>> pq;
 
-    std::vector<uint64_t> ar{0,1,2,3,5,64,129,257,986,2049,16895,28675,2406987, 2406994,3698574,7845329,12896586,67895442138, 878954421389634};
+    std::vector<uint64_t> ar{0,1,2,3,5,64,129,257,986,2049,16895,28675,2406987,2406994,3698574,7845329,12896586,67895442138,878954421389634};
     size_t size = ar.size();
 
     std::vector<uint64_t> res_pq;
@@ -134,10 +134,10 @@ TEST(mlrpqTest, QueuesDifferentRadixReturnSameArray){
 
     using KEY_TYPE = uint32_t;
 
-    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 3, true> mlrpq3;
-    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 6, true> mlrpq6;
-    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 8, true> mlrpq8;
-    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 11, true> mlrpq11;
+    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 3> mlrpq3;
+    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 6> mlrpq6;
+    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 8> mlrpq8;
+    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 11> mlrpq11;
 
     std::priority_queue<KEY_TYPE, std::vector<KEY_TYPE>, std::greater<KEY_TYPE>> pq;
 
@@ -188,7 +188,7 @@ TEST(mlrpqTest, QueuesDifferentRadixReturnSameArray){
 TEST(mlrpqTest, QueueReturnsCorrectArrayWithIntermittendPop){
     using KEY_TYPE = uint32_t;
 
-    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 5, false> mlrpq;
+    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 5> mlrpq;
 
     std::vector<KEY_TYPE> ar1{0,1,2,3,5,64,129,257,986,2049};
     std::vector<KEY_TYPE> ar2{16895,28675,2406987,3698574,7845329,12896586};
@@ -227,12 +227,50 @@ TEST(mlrpqTest, QueueReturnsCorrectArrayWithIntermittendPop){
         mlrpq.pop();
 
     }
-/*
-    for (int r = 0; r < ar_res.size(); r++){
-        std::cout << "mlrpq: " << res_mlrpq[r] << "\t res: " << ar_res[r] << std::endl;
-    }
-*/
     ASSERT_EQ(ar_res, res_mlrpq);
+}
+
+TEST(mlrpqTest, QueueReturnsCorrectArrayDifferentCDifferentRadix){
+    using KEY_TYPE = uint64_t;
+
+    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 6> mlrpq6;
+    multilayer_radix_pq::multilayer_radix_pq<KEY_TYPE, int, 6, KEY_TYPE(size_t(1) << 24)> mlrpq6C;
+
+    std::priority_queue<KEY_TYPE, std::vector<KEY_TYPE>, std::greater<KEY_TYPE>> pq;
+
+    bool eq = true;
+
+    std::vector<KEY_TYPE> ar{0,1,2,3,5,64,129,257,986,2049,16895,28675,2406987,3698574,7845329,12896586,3698574,7845329,12896586};
+    size_t size = ar.size();
+
+    for (int i=0; i <= size; i++){
+        pq.push(ar[i]);
+        mlrpq6.push(ar[i], 0);
+        mlrpq6C.push(ar[i], 0);
+    }
+
+    for (int j=0; j<size; j++){
+
+        KEY_TYPE temp_mlrpq6 = mlrpq6.top().first;
+        KEY_TYPE temp_mlrpq6C = mlrpq6.top().first;
+        KEY_TYPE temp_pq = pq.top();
+
+        if (
+                temp_pq != temp_mlrpq6 |
+                temp_pq != temp_mlrpq6C)
+        {
+            eq = false;
+        }
+
+
+        mlrpq6.pop();
+        mlrpq6C.pop();
+        pq.pop();
+
+    }
+
+    ASSERT_EQ(true, eq);
+
 
 
 }
