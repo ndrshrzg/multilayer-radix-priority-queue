@@ -286,7 +286,7 @@ namespace multilayer_radix_pq {
             }
             // update current minimum index without calling the expensive update function
             else{
-                if (pos.first < current_minimum_index_.first){ /// PROBLEM HERE: First push into 1,1 does not get updated with a push in eg 0,2 because 2 !< 1
+                if (pos.first < current_minimum_index_.first){
                     current_minimum_index_.first = pos.first;
                     current_minimum_index_.second = pos.second;
                 }
