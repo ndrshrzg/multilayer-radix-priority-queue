@@ -57,7 +57,7 @@ TEST(mlrpqTest, TopConstReturnsMinimumElementFromNBucket){
     mlrpq.push(size_t(1)<<21, 0);
     mlrpq.push((size_t(1)<<20)+1, 0);
 
-    uint64_t res = mlrpq.top_const();
+    uint64_t res = mlrpq.top_const().first;
     uint64_t exp = (size_t(1)<<20)+1;
     ASSERT_EQ(exp, res);
 }
