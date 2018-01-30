@@ -94,6 +94,7 @@ namespace multilayer_radix_pq {
     public:
         using key_type = KeyType;
         using value_type = ValueType;
+        using pair_type = std::pair<key_type, value_type>;
         //using block_type = std::queue<std::pair<key_type, value_type>>;
         //static constexpr auto block_size = size_t(1) << 18; // limit memory
         using block_type = stxxl::queue<std::pair<key_type, value_type>>;
@@ -104,10 +105,10 @@ namespace multilayer_radix_pq {
         static const auto C_BITS_ = sizeof(C)*8;
         static const size_t no_of_arrays_ = (C_BITS_/RADIX_BITS)+1;
         key_type last_minimum_;
-        key_type N_bucket_minimum_;
+        pair_type N_bucket_minimum_;
         std::pair<int64_t, int64_t> current_minimum_index_;
         std::array<std::array<block_type, no_of_buckets_>, no_of_arrays_> buckets_;
-        std::array<std::array<key_type, no_of_buckets_>, no_of_arrays_> bucket_minimum_;
+        std::array<std::array<pair_type, no_of_buckets_>, no_of_arrays_> bucket_minimum_;
         internal::BitField<radix_> bucket_empty_flags_first_level_;
         std::array<internal::BitField<radix_>, no_of_arrays_> bucket_empty_flags_second_level_;
         block_type n_bucket_;
@@ -119,7 +120,7 @@ namespace multilayer_radix_pq {
                 last_minimum_(std::numeric_limits<key_type>::min()),
                 reseeding_n_flag_(false),
                 first_push_flag_(true),
-                N_bucket_minimum_(std::numeric_limits<key_type>::max()),
+                N_bucket_minimum_({std::numeric_limits<key_type>::max(), {}}),
                 current_minimum_index_({-1, -1})
         {
             initializeBucketMinima(no_of_arrays_);
@@ -139,7 +140,7 @@ namespace multilayer_radix_pq {
         void initializeBucketMinima(size_t arr){
             // initialize array with bucket minima to be maximum
             for (int i=0; i < arr; i++){
-                bucket_minimum_[i].fill(std::numeric_limits<key_type>::max());
+                bucket_minimum_[i].fill({std::numeric_limits<key_type>::max(), {}});
             }
         }
 
@@ -150,11 +151,11 @@ namespace multilayer_radix_pq {
             // set reseeding from N flag
             reseeding_n_flag_ = true;
             // retrieve minimum in N bucket for reorganization
-            const key_type reorganization_minimum = N_bucket_minimum_;
+            const key_type reorganization_minimum = N_bucket_minimum_.first;
             // assign new minimum
             last_minimum_ = reorganization_minimum;
             // reset N_bucket_minimum_
-            N_bucket_minimum_ = std::numeric_limits<key_type>::max();
+            N_bucket_minimum_.first = std::numeric_limits<key_type>::max();
             // reorganize elements from N bucket
 
             if (ALLOW_N_OVERFLOW){
@@ -173,8 +174,9 @@ namespace multilayer_radix_pq {
                         // element remains in N bucket after reseeding
                         // push element in temporary N bucket
                         temp_n_bucket.push(temp_element);
-                        if (temp_element.first < N_bucket_minimum_) {
-                            N_bucket_minimum_ = temp_element.first;
+                        if (temp_element.first < N_bucket_minimum_.first) {
+                            N_bucket_minimum_.first = temp_element.first;
+                            N_bucket_minimum_.second = temp_element.second;
                         };
                     }
                 }
@@ -254,8 +256,9 @@ namespace multilayer_radix_pq {
             // if key minimum last minimum exceeds range [m, m+C] push into N  bucket
             if((key > C) && ((key - last_minimum_) <= C)  && !reseeding_n_flag_){
                 n_bucket_.push({key, val});
-                if(key < N_bucket_minimum_) {
-                    N_bucket_minimum_ = key;
+                if(key < N_bucket_minimum_.first) {
+                    N_bucket_minimum_.first = key;
+                    N_bucket_minimum_.second = val;
                 };
                 first_push_flag_ = false;
                 return;
@@ -268,8 +271,9 @@ namespace multilayer_radix_pq {
             bucket_empty_flags_second_level_[pos.first].setBit(pos.second);
 
             // update bucket minimum if necessary
-            if (key < bucket_minimum_[pos.first][pos.second]) {
-                bucket_minimum_[pos.first][pos.second] = key;
+            if (key < bucket_minimum_[pos.first][pos.second].first) {
+                bucket_minimum_[pos.first][pos.second].first = key;
+                bucket_minimum_[pos.first][pos.second].second = val;
             };
 
             // push key, value pair into calculated bucket
@@ -282,9 +286,12 @@ namespace multilayer_radix_pq {
             }
             // update current minimum index without calling the expensive update function
             else{
-                if (pos.first <= current_minimum_index_.first){
+                if (pos.first < current_minimum_index_.first){ /// PROBLEM HERE: First push into 1,1 does not get updated with a push in eg 0,2 because 2 !< 1
+                    current_minimum_index_.first = pos.first;
+                    current_minimum_index_.second = pos.second;
+                }
+                if (pos.first == current_minimum_index_.first){
                     if (pos.second < current_minimum_index_.second){
-                        current_minimum_index_.first = pos.first;
                         current_minimum_index_.second = pos.second;
                     }
                 }
@@ -309,7 +316,7 @@ namespace multilayer_radix_pq {
             // if B(0, m0) empty
             if (pos_minimum_element_.first > 0) {
                 // get minimum of current first non empty bucket
-                const key_type reorganization_minimum = bucket_minimum_[pos_minimum_element_.first][pos_minimum_element_.second];
+                const key_type reorganization_minimum = bucket_minimum_[pos_minimum_element_.first][pos_minimum_element_.second].first;
 
                 auto& min_bucket = buckets_[pos_minimum_element_.first][pos_minimum_element_.second];
 
@@ -332,7 +339,7 @@ namespace multilayer_radix_pq {
                 // update flags for _old_ bucket
                 updateBucketEmptyFlags(pos_minimum_element_);
                 // reinitialize the bucket minimum of the just emptied bucket
-                bucket_minimum_[pos_minimum_element_.first][pos_minimum_element_.second] = std::numeric_limits<key_type>::max();
+                bucket_minimum_[pos_minimum_element_.first][pos_minimum_element_.second] = {std::numeric_limits<key_type>::max(),{}};
                 // call pop again after reorganization
                 pop();
                 return;
@@ -355,7 +362,7 @@ namespace multilayer_radix_pq {
         }
 
 
-        const std::pair<key_type, value_type>& top() {
+        const pair_type& top() {
             assert(!empty());
             // manpe.n: Also, it seems that !empty() suffices as it includes the first condition
             // anherzog: the first condition is needed, otherwise it tries to reseed from an empty bucket
@@ -363,18 +370,18 @@ namespace multilayer_radix_pq {
                 reseedFromNBucket();
                 top();
             }
-            std::pair<key_type, value_type>& minimum_element = buckets_[current_minimum_index_.first][current_minimum_index_.second].front();
+            pair_type& minimum_element = bucket_minimum_[current_minimum_index_.first][current_minimum_index_.second];
             return minimum_element;
         };
 
 
-        const key_type top_const() const {
+        const pair_type& top_const() const {
             if (current_minimum_index_== std::pair<int64_t, int64_t> (-1, -1) && !n_bucket_.empty()){
                 return N_bucket_minimum_;
             }
             else{
-                const std::pair<key_type, value_type> minimum_element = buckets_[current_minimum_index_.first][current_minimum_index_.second].front();
-                return minimum_element.first;
+                const pair_type& minimum_element = bucket_minimum_[current_minimum_index_.first][current_minimum_index_.second];
+                return minimum_element;
             }
         };
 
