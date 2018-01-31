@@ -5,6 +5,7 @@
 #include <random>
 #include <chrono>
 #include "../include/multilayer_radix_pq.h"
+#include "../include/radix_heap.h"
 
 #ifndef MULTILAYER_RADIX_PRIORITY_QUEUE_MLRPQ_BENCHMARK_H
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MLRPQ_BENCHMARK_H
@@ -110,7 +111,7 @@ namespace benchmark {
     };
 
     template <typename KeyType, typename ValueType>
-    class NumberGeneratorWrapper{
+    class NumberGeneratorStepper{
         using key_type = KeyType;
         using value_type = ValueType;
 
@@ -125,8 +126,8 @@ namespace benchmark {
 
         // internals
         std::vector<key_type> step_numbers_;
-        std::vector<key_type> result_;
         key_type total_count_;
+        value_type val;
 
         std::vector<key_type> random_segment_sizes_;
 
@@ -134,25 +135,19 @@ namespace benchmark {
 
     // data structures being benchmarked
         multilayer_radix_pq::multilayer_radix_pq<key_type, value_type, 5> mlrpq;
+        radix_heap::pair_radix_heap<key_type, value_type> rpq;
         std::priority_queue<std::pair<key_type, value_type>, std::vector<std::pair<key_type, value_type>>, mlrpq_benchmark_comparator::CompareKey<key_type, value_type>> pq;
 
 
     public:
-        NumberGeneratorWrapper(key_type runs, key_type max_key, key_type max_segment_size, key_type number_of_segments, bool interrupted) :
+        NumberGeneratorStepper(key_type runs, key_type max_key, key_type max_segment_size, key_type number_of_segments, bool interrupted) :
                 runs_(runs),
                 max_key_(max_key),
                 max_segment_size_(max_segment_size),
                 number_of_segments_(number_of_segments),
                 current_segment_start_(size_t(0)),
-                interrupted_(interrupted),
-                result_({})
+                interrupted_(interrupted)
         {
-            NumberGenerator<key_type> gen(1, max_segment_size_, number_of_segments_);
-            random_segment_sizes_ = gen.getGeneratedNumbers();
-            std::for_each(random_segment_sizes_.begin(), random_segment_sizes_.end(), [&] (int n) {
-               total_count_ += n;
-            });
-
 
             execute();
 
@@ -160,21 +155,53 @@ namespace benchmark {
 
     private:
         void execute(){
-            mlrpq_benchmark_time::Stopwatch watch;
+
+            mlrpq_benchmark_time::Stopwatch mlrpq_watch;
+            mlrpq_benchmark_time::Stopwatch rpq_watch;
+            mlrpq_benchmark_time::Stopwatch pq_watch;
+
+
             for (int i = 1; i <= runs_; i++){
+                std::vector<key_type> res_mlrpq;
+                std::vector<key_type> res_rpq;
+                std::vector<key_type> res_pq;
+                // generate new segment sizes
+                random_segment_sizes_ = {};
+                generate_step_segments();
+                // generate new random keys
                 auto step_numbers = generate_step_numbers();
-                watch.start();
-                mlrpqPushAllPullAll(step_numbers_);
-                watch.stop();
-                std::cout << "Step time: " << watch.getCurrentTime() << "ms" << std::endl;
+                // start benchmarking
+                std::cout << "---------------------------------" << std::endl;
+                std::cout << "Step " << i << "\n" << "Generated:\t" << step_numbers.size() << " numbers." << std::endl;
+                mlrpq_watch.start();
+                res_mlrpq = mlrpqAllInAllOut(step_numbers_);
+                mlrpq_watch.stop();
+                std::cout << "mlrpq Step " << i << " time: " << mlrpq_watch.getCurrentTime() << "ms" << std::endl;
+                rpq_watch.start();
+                res_rpq = rpqAllInAllOut(step_numbers_);
+                rpq_watch.stop();
+                std::cout << "rpq Step " << i << " time: " << pq_watch.getCurrentTime() << "ms" << std::endl;
+                pq_watch.start();
+                res_pq = pqAllInAllOut(step_numbers_);
+                pq_watch.stop();
+                std::cout << "pq Step " << i << " time: " << pq_watch.getCurrentTime() << "ms" << std::endl;
+                // check results of step against std::pq (assumed to be correct)
+                if (res_mlrpq == res_pq){
+                    std::cout << "Arrays equal and sorted correctly" << std::endl;
+                }
+                else {
+                    std::cout << "Checking results failed" << std::endl;
+                }
+                std::cout << "End of step " << i << "\n---------------------------------" << std::endl;
             }
-            std::cout << "Overall time: " << watch.getTotalTime() << "ms" << std::endl;
-            if (std::is_sorted(result_.begin(), result_.end())){
-                std::cout << "Array is sorted correctly" << std::endl;
-            }
-            else {
-                std::cout << "Checking results failed" << std::endl;
-            }
+        }
+
+        auto generate_step_segments(){
+            NumberGenerator<key_type> gen(1, max_segment_size_, number_of_segments_);
+            random_segment_sizes_ = gen.getGeneratedNumbers();
+            std::for_each(random_segment_sizes_.begin(), random_segment_sizes_.end(), [&] (int n) {
+                total_count_ += n;
+            });
         }
 
         auto generate_step_numbers(){
@@ -188,16 +215,40 @@ namespace benchmark {
             return step_numbers_;
         }
 
-        void mlrpqPushAllPullAll(std::vector<key_type> step_numbers_){
-            auto tmp_min = std::numeric_limits<key_type>::max();
+        std::vector<key_type> mlrpqAllInAllOut(std::vector<key_type> step_numbers_){
+            std::vector<key_type> tmp_res;
             for (int i = 0; i < step_numbers_.size(); i++){
-                if (step_numbers_[i] < tmp_min) { tmp_min = step_numbers_[i]; };
-                mlrpq.push(step_numbers_[i], 0);
+                mlrpq.push(step_numbers_[i], val);
             }
             while(!mlrpq.empty()){
-                result_.push_back(mlrpq.top().first);
+                tmp_res.push_back(mlrpq.top().first);
                 mlrpq.pop();
             }
+            return tmp_res;
+        }
+
+        std::vector<key_type> pqAllInAllOut(std::vector<key_type> step_numbers_){
+            std::vector<key_type> tmp_res;
+            for (int i = 0; i < step_numbers_.size(); i++){
+                pq.push({step_numbers_[i], val});
+            }
+            while(!pq.empty()){
+                tmp_res.push_back(pq.top().first);
+                pq.pop();
+            }
+            return tmp_res;
+        }
+
+        std::vector<key_type> rpqAllInAllOut(std::vector<key_type> step_numbers_){
+            std::vector<key_type> tmp_res;
+            for (int i = 0; i < step_numbers_.size(); i++){
+                rpq.push(step_numbers_[i], val);
+            }
+            while(!rpq.empty()){
+                tmp_res.push_back(rpq.top_key());
+                rpq.pop();
+            }
+            return tmp_res;
         }
 
 
