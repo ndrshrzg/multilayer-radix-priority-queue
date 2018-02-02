@@ -80,7 +80,7 @@ namespace internal {
         using key_type = KeyType;
 
         static constexpr size_t index_highest_significant (key_type key, key_type last){
-            return (std::numeric_limits<uint64_t>::digits - tlx::clz<uint64_t>(key ^ last)) - 1;
+            return (std::numeric_limits<uint64_t>::digits - tlx::clz<uint64_t>(key ^ last));
         }
     };
 }
@@ -206,10 +206,10 @@ namespace multilayer_radix_pq {
                 return {0, 0};
             }
             else{
-                const size_t index_highest_significant = internal::bit_calculations<key_type>::index_highest_significant(key, last);
-                const size_t mask = (size_t(1) << (index_highest_significant+1))-1;
+                const size_t index_highest_significant = internal::bit_calculations<key_type>::index_highest_significant(key, last) - 1;
                 const size_t i = index_highest_significant/RADIX_BITS;
-                const auto shift = static_cast<size_t>(log2(radix_) * i);
+                const size_t shift = (RADIX_BITS * i);
+                const size_t mask = (i == 0)? (size_t(1) << RADIX_BITS) - 1 : (size_t(1) << (shift+RADIX_BITS)) - 1;
                 const size_t j = ((key & mask) >> shift);
                 return {i, j};
             }
@@ -228,8 +228,6 @@ namespace multilayer_radix_pq {
 
 
         void updateCurrentMinimumIndex(){
-            // manpe.n: why not directly: current_minimum_index_ = calculateMinimumIndex()?
-            // aherzog: assignment operator for std::pair has been removed after c++11
             std::pair<int64_t, int64_t> calculated_index = calculateMinimumIndex();
             current_minimum_index_.first = calculated_index.first;
             current_minimum_index_.second = calculated_index.second;
@@ -361,21 +359,7 @@ namespace multilayer_radix_pq {
 
         }
 
-
-        const pair_type& top() {
-            assert(!empty());
-            // manpe.n: Also, it seems that !empty() suffices as it includes the first condition
-            // anherzog: the first condition is needed, otherwise it tries to reseed from an empty bucket
-            if ((current_minimum_index_ == std::pair<int64_t, int64_t> (-1, -1)) && !empty()){
-                reseedFromNBucket();
-                top();
-            }
-            pair_type& minimum_element = bucket_minimum_[current_minimum_index_.first][current_minimum_index_.second];
-            return minimum_element;
-        };
-
-
-        const pair_type& top_const() const {
+        const pair_type& top() const {
             if (current_minimum_index_== std::pair<int64_t, int64_t> (-1, -1) && !n_bucket_.empty()){
                 return N_bucket_minimum_;
             }
