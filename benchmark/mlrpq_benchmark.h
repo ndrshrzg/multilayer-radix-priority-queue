@@ -3,9 +3,11 @@
 //
 
 #include <random>
+#include <algorithm>
 #include <chrono>
 #include "../include/multilayer_radix_pq.h"
 #include "../include/radix_heap.h"
+#include "../libs/stxxl/include/stxxl/timer"
 
 #ifndef MULTILAYER_RADIX_PRIORITY_QUEUE_MLRPQ_BENCHMARK_H
 #define MULTILAYER_RADIX_PRIORITY_QUEUE_MLRPQ_BENCHMARK_H
@@ -59,6 +61,7 @@ namespace benchmark {
     private:
         key_type range_min_, range_max_, count_;
         key_type max_generated_;
+        key_type min_generated_;
         std::vector<key_type> result_;
 
     public:
@@ -66,7 +69,8 @@ namespace benchmark {
                 range_min_(min),
                 range_max_(max),
                 count_(count),
-                max_generated_(std::numeric_limits<key_type>::min())
+                max_generated_(std::numeric_limits<key_type>::min()),
+                min_generated_(std::numeric_limits<key_type>::max())
         {
 
             std::random_device rd;
@@ -87,6 +91,10 @@ namespace benchmark {
                     max_generated_ = generated_number_;
                 };
 
+                if (min_generated_ > generated_number_) {
+                    min_generated_ = generated_number_;
+                };
+
                 result_.push_back(generated_number_);
             }
 
@@ -98,6 +106,10 @@ namespace benchmark {
 
         auto getMaxGenerated(){
             return max_generated_;
+        }
+
+        auto getMinGenerated(){
+            return min_generated_;
         }
 
     };
@@ -143,12 +155,11 @@ namespace benchmark {
 
     private:
         void execute(){
-            mlrpq_benchmark_time::Stopwatch mlrpq_watch;
-            mlrpq_benchmark_time::Stopwatch rpq_watch;
-            mlrpq_benchmark_time::Stopwatch pq_watch;
-
-
             for (int i = 1; i <= runs_; i++){
+                stxxl::timer mlrpq_watch(false);
+                stxxl::timer rpq_watch(false);
+                stxxl::timer pq_watch(false);
+
                 std::vector<key_type> res_mlrpq;
                 std::vector<key_type> res_rpq;
                 std::vector<key_type> res_pq;
@@ -163,18 +174,21 @@ namespace benchmark {
                 mlrpq_watch.start();
                 res_mlrpq = mlrpqAllInAllOut(step_numbers);
                 mlrpq_watch.stop();
-                std::cout << "mlrpq Step " << i << " time:\t\t" << mlrpq_watch.getCurrentTime() << "\tns" << std::endl;
+                std::cout << "mlrpq Step " << i << " time:\t\t" << mlrpq_watch.seconds() << "\ts" << std::endl;
                 rpq_watch.start();
                 res_rpq = rpqAllInAllOut(step_numbers);
                 rpq_watch.stop();
-                std::cout << "rpq Step " << i << " time:\t\t" << pq_watch.getCurrentTime() << "\tns" << std::endl;
+                std::cout << "rpq Step " << i << " time:\t\t" << rpq_watch.seconds() << "\ts" << std::endl;
                 pq_watch.start();
                 res_pq = pqAllInAllOut(step_numbers);
                 pq_watch.stop();
-                std::cout << "pq Step " << i << " time:\t\t\t" << pq_watch.getCurrentTime() << "\tns" << std::endl;
+                std::cout << "pq Step " << i << " time:\t\t\t" << pq_watch.seconds() << "\ts" << std::endl;
                 // check results of step against std::pq (assumed to be correct)
                 if (res_mlrpq == res_pq){
                     std::cout << "Arrays equal and sorted correctly" << std::endl;
+                    if (!(res_rpq == res_pq)){
+                        std::cout << "\n RPQ failed" << std::endl;
+                    }
                 }
                 else {
                     std::cout << "Checking results failed" << std::endl;
@@ -306,9 +320,13 @@ namespace benchmark {
                                            key_type number_of_segments, key_type maximum_segment_size,
                                            mlrpq_type& mlrpq, rpq_type& rpq, pq_type& pq){
             // instantiate stopwatches
-            mlrpq_benchmark_time::Stopwatch mlrpq_watch;
-            mlrpq_benchmark_time::Stopwatch rpq_watch;
-            mlrpq_benchmark_time::Stopwatch pq_watch;
+            //stxxl::timer rpq_watch(false);
+            //stxxl::timer pq_watch(false);
+
+            double mlrpq_time = 0;
+            double rpq_time = 0;
+            double pq_time = 0;
+
 
             // set current_pushed_max_ to 0
             current_pushed_max_ = key_min;
@@ -336,35 +354,13 @@ namespace benchmark {
                 assert(current_pushed_max_ < std::numeric_limits<key_type>::max());
 
                 // pushing segment keys into mlrpq
-                mlrpq_watch.start();
-                for (int i = 0; i < segment_numbers.size(); i++) {
-                    mlrpq.push(segment_numbers[i], val);
-                }
-                for (int i = 0; i < count_numbers_segment_popped; i++) {
-                    res_mlrpq_.push_back(mlrpq.top().first);
-                    mlrpq.pop();
-                }
-                mlrpq_watch.stop();
+                mlrpq_time += runMLRPQ(mlrpq, segment_numbers, count_numbers_segment_popped);
+
                 // pushing segment keys into pq
-                pq_watch.start();
-                for (int i = 0; i < segment_numbers.size(); i++) {
-                    pq.push({segment_numbers[i], val});
-                }
-                for (int i = 0; i < count_numbers_segment_popped; i++) {
-                    res_pq_.push_back(pq.top().first);
-                    pq.pop();
-                }
-                pq_watch.stop();
+                rpq_time += runRPQ(rpq, segment_numbers, count_numbers_segment_popped);
+
                 // pushing segment keys into rpq
-                rpq_watch.start();
-                for (int i = 0; i < segment_numbers.size(); i++) {
-                    rpq.push(segment_numbers[i], val);
-                }
-                for (int i = 0; i < count_numbers_segment_popped; i++) {
-                    res_rpq_.push_back(rpq.top_key());
-                    rpq.pop();
-                }
-                rpq_watch.stop();
+                pq_time += runPQ(pq, segment_numbers, count_numbers_segment_popped);
 
                 // get the current maximum that was poppped again to ensure monotonous input in next segment
                 current_popped_max_ = *std::max_element(res_pq_.begin(), res_pq_.end());
@@ -374,46 +370,208 @@ namespace benchmark {
                 popped_overall += count_numbers_segment_popped;
 
             }
+            std::vector<key_type> segment_numbers_empty;
             // pop remaining numbers from queues
-            mlrpq_watch.start();
-            for (int i = 0; i < (pushed_overall-popped_overall); i++) {
+            mlrpq_time += runMLRPQ(mlrpq, segment_numbers_empty, pushed_overall-popped_overall);
+            //
+            rpq_time += runRPQ(rpq, segment_numbers_empty, pushed_overall-popped_overall);
+            //
+            pq_time += runPQ(pq, segment_numbers_empty, pushed_overall-popped_overall);
+            std::cout << "numbers in this step: " << pushed_overall << std::endl;
+            std::cout << "mlrpq step time: \t" << mlrpq_time << "\ts" << std::endl;
+            std::cout << "rpq step time: \t\t" << rpq_time << "\ts"  << std::endl;
+            std::cout << "pq step time: \t\t" << pq_time << "\ts"  << std::endl;
+            std::cout << "Queues empty: " << mlrpq.empty() << std::endl;
+            std::string eq = (res_mlrpq_ == res_pq_) ? "true" : "false";
+            std::cout << "Results are equal: " << eq << std::endl;
+
+        }
+
+        double runMLRPQ(mlrpq_type& mlrpq, std::vector<key_type>& segment_numbers, size_t count_numbers_segment_popped){
+            stxxl::timer watch(false);
+
+            watch.start();
+            for (int i = 0; i < segment_numbers.size(); i++) {
+                mlrpq.push(segment_numbers[i], val);
+            }
+            for (int i = 0; i < count_numbers_segment_popped; i++) {
                 res_mlrpq_.push_back(mlrpq.top().first);
                 mlrpq.pop();
             }
-            mlrpq_watch.stop();
+            watch.stop();
+
+            return watch.seconds();
+
+
+
+        };
+        double runRPQ(rpq_type& rpq, std::vector<key_type>& segment_numbers, size_t count_numbers_segment_popped){
+            stxxl::timer rpq_watch(false);
+
             rpq_watch.start();
-            for (int i = 0; i < (pushed_overall-popped_overall); i++) {
+            for (int i = 0; i < segment_numbers.size(); i++) {
+                rpq.push(segment_numbers[i], val);
+            }
+            for (int i = 0; i < count_numbers_segment_popped; i++) {
                 res_rpq_.push_back(rpq.top_key());
                 rpq.pop();
             }
             rpq_watch.stop();
+
+
+
+
+        };
+        double runPQ(pq_type& pq, std::vector<key_type>& segment_numbers, size_t count_numbers_segment_popped){
+            stxxl::timer pq_watch(false);
+
             pq_watch.start();
-            for (int i = 0; i < (pushed_overall-popped_overall); i++) {
+            for (int i = 0; i < segment_numbers.size(); i++) {
+                pq.push({segment_numbers[i], val});
+            }
+            for (int i = 0; i < count_numbers_segment_popped; i++) {
                 res_pq_.push_back(pq.top().first);
                 pq.pop();
             }
             pq_watch.stop();
-            std::cout << "numbers in this step: " << pushed_overall << std::endl;
-            std::cout << "mlrpq step time: \t" << mlrpq_watch.getTotalTime() << std::endl;
-            std::cout << "rpq step time: \t\t" << rpq_watch.getTotalTime() << std::endl;
-            std::cout << "pq step time: \t\t" << pq_watch.getTotalTime() << std::endl;
-            std::cout << "mlrpq empty: " << mlrpq.empty() << std::endl;
-            std::cout << "rpq empty: " << rpq.empty() << std::endl;
-            std::cout << "pq empty: " << pq.empty() << std::endl;
-            std::string eq = (res_mlrpq_ == res_pq_) ? "true" : "false";
-            std::cout << "Results are equal: " << eq << std::endl;
 
-            /// DEBUGGING
-            if (!(res_mlrpq_ == res_pq_)){
-                std::cout << ((res_pq_.size() == res_mlrpq_.size()) ? "equally sized" : "not equally sized") << std::endl;
-                for (int i = 0; i < res_pq_.size(); i++){
-                    std::cout << "pq:\t" << res_pq_[i] << "\tmlrpq:\t" << res_mlrpq_[i] << std::endl;
-                }
+
+        };
+
+    };
+
+
+
+
+
+    template <typename KeyType, typename ValueType, size_t RADIX_BITS_>
+    class mlrpqOnlyAllInAllOut{
+        using key_type = KeyType;
+        using value_type = ValueType;
+
+    private:
+        // passed by constructor
+        key_type runs_;
+        key_type max_key_;
+        key_type max_segment_size_;
+        key_type number_of_segments_;
+        key_type current_segment_start_;
+
+        // internals
+        std::vector<key_type> step_numbers_;
+        key_type total_count_;
+        value_type val;
+
+        std::vector<key_type> random_segment_sizes_;
+
+        // data structures being benchmarked
+        using mlrpq_type = multilayer_radix_pq::multilayer_radix_pq<key_type, value_type, RADIX_BITS_, size_t(1) << 25>;
+
+
+    public:
+        mlrpqOnlyAllInAllOut(key_type runs, key_type max_key, key_type max_segment_size, key_type number_of_segments) :
+                runs_(runs),
+                max_key_(max_key),
+                max_segment_size_(max_segment_size),
+                number_of_segments_(number_of_segments),
+                current_segment_start_(size_t(1) << 18)
+        {
+
+            for (int i = 1; i <= runs_; i++) {
+                mlrpq_type mlrpq;
+                current_segment_start_ = size_t(1) << 25;
+                execute(i, mlrpq);
             }
-            ///
+
+        };
+
+    private:
+        void execute(int step, mlrpq_type& mlrpq){
+                stxxl::timer mlrpq_watch(false);
+
+                std::vector<key_type> res_mlrpq;
+                std::vector<key_type> control;
+
+                // generate new segment sizes
+                random_segment_sizes_ = {};
+                generateStepSegments();
+                // generate new random keys
+                std::cout << "---------------------------------" << std::endl;
+                std::cout << "Step " << step << "\n" << std::endl;
+                auto step_numbers = generateStepNumbers();
+                std::cout <<"Generated:\t" << step_numbers.size() << " numbers." << std::endl;
+                total_count_ += step_numbers.size();
+
+                control = step_numbers;
+                std::sort(control.begin(), control.end());
+
+                // start benchmarking
+
+                mlrpq_watch.start();
+                res_mlrpq = mlrpqAllInAllOut(step_numbers, mlrpq);
+                mlrpq_watch.stop();
+                std::cout << "mlrpq Step " << step << " time:\t\t" << mlrpq_watch.seconds() << "\ts" << std::endl;
 
 
 
+                // check results of step against std::pq (assumed to be correct)
+                if (res_mlrpq == control){
+                    std::cout << "Arrays equal and sorted correctly" << std::endl;
+                }
+                else {
+                    std::cout << "Checking results failed" << std::endl;
+                }
+                std::cout << "End of step " << step << "\n---------------------------------" << std::endl;
+
+        }
+
+        auto generateStepSegments(){
+            NumberGenerator<key_type> gen(1, max_segment_size_, number_of_segments_);
+            random_segment_sizes_ = gen.getGeneratedNumbers();
+            std::for_each(random_segment_sizes_.begin(), random_segment_sizes_.end(), [&] (int n) {
+                total_count_ += n;
+            });
+
+
+            return random_segment_sizes_;
+        }
+
+        auto generateStepNumbers(){
+            step_numbers_ = {};
+            key_type min = std::numeric_limits<key_type>::max();
+            key_type max = std::numeric_limits<key_type>::min();
+
+
+            for (int i = 0; i < number_of_segments_; i++){
+                NumberGenerator<key_type> gen(current_segment_start_, current_segment_start_+max_key_, random_segment_sizes_[i]);
+                current_segment_start_ = gen.getMaxGenerated();
+                auto generated_numbers = gen.getGeneratedNumbers();
+                step_numbers_.insert(step_numbers_.end(), generated_numbers.begin(), generated_numbers.end());
+                min = std::min(min, gen.getMinGenerated());
+                max = std::max(max, gen.getMaxGenerated());
+            }
+            std::cout << "Minimum generated: " << min << std::endl;
+            std::cout << "Maximum generated: " << max << std::endl;
+            return step_numbers_;
+        }
+
+        std::vector<key_type> mlrpqAllInAllOut(std::vector<key_type> step_numbers_, mlrpq_type& mlrpq){
+            std::vector<key_type> tmp_res;
+            for (int i = 0; i < step_numbers_.size(); i++){
+                mlrpq.push(step_numbers_[i], val);
+            }
+            //
+            while(!mlrpq.empty()){
+                tmp_res.push_back(mlrpq.top().first);
+                mlrpq.pop();
+            }
+            return tmp_res;
+        }
+
+    public:
+
+        auto getTotalCount(){
+            return total_count_;
         }
 
     };
