@@ -51,17 +51,21 @@ TEST(mlrpqTest, TopReturnsMinimumElementFromNBucket){
     uint64_t exp = (size_t(1)<<20)+1;
     ASSERT_EQ(exp, res);
 }
-/*   Function top_const deprecated
-TEST(mlrpqTest, TopConstReturnsMinimumElementFromNBucket){
-    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 5, uint64_t(size_t(1) << 20)> mlrpq;
+
+TEST(mlrpqTest, PopRemovesElementsFromNBucket){
+    multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 3, uint64_t(1) << 20> mlrpq;
     mlrpq.push(size_t(1)<<21, 0);
     mlrpq.push((size_t(1)<<20)+1, 0);
 
-    uint64_t res = mlrpq.top_const().first;
-    uint64_t exp = (size_t(1)<<20)+1;
+    mlrpq.pop();
+
+    uint64_t res = mlrpq.top().first;
+    uint64_t exp = (size_t(1) << 21);
+
     ASSERT_EQ(exp, res);
+
 }
-*/
+
 TEST(mlrpqTest, TopCrashesWhenEmpty){
     multilayer_radix_pq::multilayer_radix_pq<uint64_t, int, 5> mlrpq;
     ASSERT_DEATH(mlrpq.top(), ".");
