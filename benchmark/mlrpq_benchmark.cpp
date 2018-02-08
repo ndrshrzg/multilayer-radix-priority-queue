@@ -18,25 +18,29 @@ struct MiB{
     char data[1024][1024][size] = {0b00000000};
 };
 
-
+std::ostream& operator<< (std::ostream& o, const std::pair<uint64_t, B<1>>& d) {
+    o << d.first;
+    return o;
+};
 
 
 int main(){
-    typedef uint64_t KEY_TYPE; // later given to wrapper via template parameter
+    typedef uint64_t KEY_TYPE;
 
-    KEY_TYPE max_key = size_t(1) << 31;
-    KEY_TYPE max_segment_size = size_t(1) << 1;
-    KEY_TYPE number_of_segments = 250;
+    KEY_TYPE min_key = 0;
+    KEY_TYPE max_key = size_t(1) << 12;
+    KEY_TYPE max_segment_size = size_t(1) << 18;
+    KEY_TYPE number_of_segments = 50;
 
-    // initialize with template params key_type, value_type and constructor params: number of steps,
-    // the maximum of all keys, the maximum length of one individual segment, the number of segments,
-    //benchmark::allInAllOut<KEY_TYPE, KiB<10>> allInAllOut1(10, max_key, max_segment_size, number_of_segments);
+    benchmark::allInAllOut<KEY_TYPE, B<1>> allInAllOut1(3, max_key, max_segment_size, number_of_segments);
 
-    //benchmark::allInAllOutInterrupted<KEY_TYPE, data<2>> allInAllOutInterrupted1(10, KEY_TYPE(0), max_key, number_of_segments, max_segment_size);
+    benchmark::allInAllOutInterrupted<KEY_TYPE, B<1>> allInAllOutInterrupted1(3, KEY_TYPE(0), max_key, number_of_segments, max_segment_size);
 
-    benchmark::mlrpqOnlyAllInAllOut<KEY_TYPE, B<1>, 3> mlrpqOnlyAllInAllOut1(10, max_key, max_segment_size, number_of_segments);
+    benchmark::mlrpqOnlyAllInAllOut<KEY_TYPE, B<1>, 3>
+            mlrpqOnlyAllInAllOut1(3, max_key, number_of_segments, max_segment_size);
 
-
+    benchmark::mlrpqOnlyAllInAllOutInterrupted<KEY_TYPE, B<1>, 3>
+            mlrpqOnlyAllInAllOutInterrupted(3, min_key, max_key, number_of_segments, max_segment_size);
 
     return 0;
 }

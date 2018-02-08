@@ -10,24 +10,24 @@
 #include <iostream>
 #include <algorithm>
 
+
 typedef struct data
 {
     float large[1][1];
 } DATA;
 
+std::ostream& operator<< (std::ostream& o, const std::pair<uint64_t, DATA>& d) {
+    o << d.first;
+    return o;
+}
 
-class CompareKey
+class CompareKeyOld
 {
 public:
     bool operator() (const std::pair<uint64_t, DATA> n1, const std::pair<uint64_t, DATA> n2) const { return n1.first > n2.first; }
+    std::pair<uint64_t, DATA> min_value() const { return {std::numeric_limits<uint64_t>::max(), DATA()}; }
 };
 
-class CompareKeyNoPair
-{
-public:
-    bool operator() (uint64_t a, const uint64_t b) const { return a > b; }
-    uint64_t min_value() const { return std::numeric_limits<uint64_t>::max(); }
-};
 
 
 std::pair<std::chrono::steady_clock::time_point, std::chrono::steady_clock::time_point> benchMLRPQ(std::vector<uint64_t> random_numbers, DATA val, std::vector<uint64_t> res_vec);
@@ -114,7 +114,7 @@ int main()
 }
 
 std::pair<std::chrono::steady_clock::time_point, std::chrono::steady_clock::time_point> benchPQ(std::vector<uint64_t> random_numbers, DATA val, std::vector<uint64_t> res_vec) {
-    std::priority_queue<std::pair<uint64_t,DATA>, std::vector<std::pair<uint64_t,DATA>>, CompareKey> pq;
+    std::priority_queue<std::pair<uint64_t,DATA>, std::vector<std::pair<uint64_t,DATA>>, CompareKeyOld> pq;
     std::chrono::steady_clock::time_point pq_start = std::chrono::steady_clock::now();
     uint64_t control = ::std::numeric_limits<uint64_t>::min();
     for (int j=0; j <= random_numbers.size(); j++){
@@ -166,7 +166,7 @@ std::pair<std::chrono::steady_clock::time_point, std::chrono::steady_clock::time
 
 std::pair<std::chrono::steady_clock::time_point, std::chrono::steady_clock::time_point> benchStxxlPQ(std::vector<uint64_t> random_numbers, std::vector<uint64_t> res_vec) {
 
-    typedef stxxl::PRIORITY_QUEUE_GENERATOR<uint64_t, CompareKeyNoPair, 64*1024*1024, 1024*1024>::result stxxl_pq_type;
+    typedef stxxl::PRIORITY_QUEUE_GENERATOR<std::pair<uint64_t, DATA>, CompareKeyOld, 64*1024*1024, 1024*1024>::result stxxl_pq_type;
     typedef stxxl_pq_type::block_type block_type;
     const unsigned int mem_for_pools = 16*1024*1024;
 
@@ -178,11 +178,11 @@ std::pair<std::chrono::steady_clock::time_point, std::chrono::steady_clock::time
 
     for (int j=0; j <= random_numbers.size(); j++){
         auto tmp = random_numbers[j];
-        pq.push(tmp);
+        pq.push({tmp, DATA()});
     }
 
     while(!pq.empty()){
-        uint64_t temp = pq.top();
+        uint64_t temp = pq.top().first;
         res_vec.push_back(temp);
         pq.pop();
         if (temp < control){ std::cout << "fail" << std::endl;}
