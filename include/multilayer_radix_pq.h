@@ -373,6 +373,10 @@ namespace multilayer_radix_pq {
             return (current_minimum_index_ == std::pair<int64_t,int64_t>(-1, -1)) && n_bucket_.empty();
         }
 
+        void reset() {
+            first_push_flag_ = true;
+        }
+
     }; // end class multilayer_radix_pq
 }
 
