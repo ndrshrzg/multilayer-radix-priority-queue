@@ -122,7 +122,7 @@ namespace benchmark {
 
 
     public:
-        allInAllOut(key_type runs, key_type max_key, key_type max_segment_size, key_type number_of_segments) :
+        allInAllOut(key_type runs, key_type max_key, key_type number_of_segments, key_type max_segment_size) :
                 runs_(runs),
                 max_key_(max_key),
                 max_segment_size_(max_segment_size),
@@ -235,7 +235,7 @@ namespace benchmark {
                 auto generated_numbers = gen.getGeneratedNumbers();
                 stxxl_pq_watch.start();
                 for (int i = 0; i < generated_numbers.size(); i++){
-                    stxxl_pq.push({generated_numbers[i], val[]);
+                    stxxl_pq.push({generated_numbers[i], val});
                 }
                 stxxl_pq_watch.stop();
             }
