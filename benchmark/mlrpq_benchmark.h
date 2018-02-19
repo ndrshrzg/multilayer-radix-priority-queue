@@ -178,6 +178,8 @@ namespace benchmark {
                 runStxxlPQ(stxxl_pq, stxxl_pq_watch, step_seed, random_segment_sizes, size);
                 stxxl::stats_data stxxl_pq_iostat = stxxl::stats_data(*stxxl::stats::get_instance()) - s1;
                 
+                current_segment_start_ = size_t(0);
+                
                 //replace with runMLRPQ(mlrpq_type& mlrpq, stxxl::timer &stxxl_pq_watch, double step_seed, const std::vector<KeyType>& random_segment_sizes, const key_type size)
                 stxxl::stats_data s2 = *stxxl::stats::get_instance();
                 runMLRPQ(mlrpq, mlrpq_watch, step_seed, random_segment_sizes, size);
@@ -228,7 +230,8 @@ namespace benchmark {
             return tmp_res;
         }
         */
-        std::vector<key_type> runStxxlPQ(stxxl_pq_type& stxxl_pq, stxxl::timer &stxxl_pq_watch, double step_seed, const std::vector<KeyType>& random_segment_sizes, const key_type size){
+        std::vector<key_type> runStxxlPQ(stxxl_pq_type& stxxl_pq, stxxl::timer& stxxl_pq_watch, double step_seed, const std::vector<KeyType>& random_segment_sizes, const key_type size){
+            std::cout << "entered run stxxlpq" << std::endl
             for (int i = 0; i < number_of_segments_; i++){
                 NumberGenerator<key_type> gen(current_segment_start_, current_segment_start_ + max_key_, random_segment_sizes[i], step_seed);
                 current_segment_start_ = gen.getMaxGenerated();
@@ -243,10 +246,12 @@ namespace benchmark {
             // pop all
             stxxl_pq_watch.start();
             for (int i = 0; i < size; i++){
+                std::cout << "pop #: " << i << "of " << size << std::endl;
                 dummy_ += stxxl_pq.top().first;
                 stxxl_pq.pop();
             }
             stxxl_pq_watch.stop();
+        }
     };
 
     template <typename KeyType, typename ValueType, size_t RADIX_BITS_>
@@ -435,7 +440,7 @@ namespace benchmark {
 
 
     template <typename KeyType, typename ValueType, size_t RADIX_BITS_>
-    class mlrpqOnlyAllInAllOut{
+    class mlrpqOnlyAllInAllOut{ 
         using key_type = KeyType;
         using value_type = ValueType;
 

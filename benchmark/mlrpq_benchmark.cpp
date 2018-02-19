@@ -76,7 +76,7 @@ void benchmarkMLRPQ(int runs, KeyType min_key, KeyType max_key, KeyType number_o
         benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 7> mlrpqAIAO(runs, max_key, number_of_segments, max_segment_size);
         benchmark::mlrpqOnlyAllInAllOutInterrupted<KeyType , ValueType, 7> mlrpqOnlyInterrutped(runs, min_key, max_key, number_of_segments, max_segment_size);
     }
-}
+};
 
 template <typename KeyType, typename ValueType>
 void benchmarkCompetitive(int runs, KeyType max_key, KeyType number_of_segments, KeyType max_segment_size, int radix){
