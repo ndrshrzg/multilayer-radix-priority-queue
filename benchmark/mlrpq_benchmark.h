@@ -5,7 +5,7 @@
 #include <random>
 #include <algorithm>
 #include <chrono>
-#include ".//include/multilayer_radix_pq.h"
+#include "../include/multilayer_radix_pq.h"
 #include "../libs/stxxl/include/stxxl/timer"
 #include <stxxl/priority_queue>
 
