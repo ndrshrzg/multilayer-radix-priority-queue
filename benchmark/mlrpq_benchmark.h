@@ -149,7 +149,6 @@ namespace benchmark {
                 // start benchmarking
                 std::cout << "code;AllInAllOutCompetitive" << std::endl;
                 std::cout << "step_begin;" << i << std::endl;
-                std::cout << "generated;" << step_numbers.size() << std::endl;
                 execute(mlrpq, stxxl_pq, step_seed);
                 std::cout << "step_end;" << i << std::endl;
             }
@@ -158,7 +157,7 @@ namespace benchmark {
 
     private:
 
-        void executemlrpq_type& mlrpq, stxxl_pq_type& stxxl_pq, double step_seed){
+        void execute(mlrpq_type& mlrpq, stxxl_pq_type& stxxl_pq, double step_seed){
                 stxxl::timer mlrpq_watch(false);
                 stxxl::timer stxxl_pq_watch(false);
 
