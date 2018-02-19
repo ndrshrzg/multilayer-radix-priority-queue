@@ -180,7 +180,7 @@ namespace benchmark {
                 
                 //replace with runMLRPQ(mlrpq_type& mlrpq, stxxl::timer &stxxl_pq_watch, double step_seed, const std::vector<KeyType>& random_segment_sizes, const key_type size)
                 stxxl::stats_data s2 = *stxxl::stats::get_instance();
-                runMLRPQ(mlrpq, , mlrpq_watch, random_segment_sizes, size);
+                runMLRPQ(mlrpq, mlrpq_watch, random_segment_sizes, size);
                 stxxl::stats_data mlrpq_iostat = stxxl::stats_data(*stxxl::stats::get_instance()) - s2;
 
                 //TODO add validation procedure here
@@ -235,7 +235,7 @@ namespace benchmark {
                 auto generated_numbers = gen.getGeneratedNumbers();
                 stxxl_pq_watch.start();
                 for (int i = 0; i < generated_numbers.size(); i++){
-                    stxxl_pq.push(generated_numbers[i], val);
+                    stxxl_pq.push({generated_numbers[i], val[]);
                 }
                 stxxl_pq_watch.stop();
             }
