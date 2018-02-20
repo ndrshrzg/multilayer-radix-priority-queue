@@ -79,27 +79,27 @@ void benchmarkMLRPQ(int runs, KeyType min_key, KeyType max_key, KeyType number_o
 };
 
 template <typename KeyType, typename ValueType>
-void benchmarkCompetitive(int runs, KeyType max_key, KeyType number_of_segments, KeyType max_segment_size, int radix){
+void benchmarkCompetitive(int runs, KeyType min_key, KeyType max_key, KeyType number_of_segments, KeyType max_segment_size, int radix){
     if (radix == 1){
-        benchmark::allInAllOut<KeyType, ValueType, 1> AIAO(runs, max_key, number_of_segments, max_segment_size);
+        benchmark::allInAllOut<KeyType, ValueType, 1> AIAO(runs, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 2){
-        benchmark::allInAllOut<KeyType, ValueType, 2> AIAO(runs, max_key, number_of_segments, max_segment_size);
+        benchmark::allInAllOut<KeyType, ValueType, 2> AIAO(runs, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 3){
-        benchmark::allInAllOut<KeyType, ValueType, 3> AIAO(runs, max_key, number_of_segments, max_segment_size);
+        benchmark::allInAllOut<KeyType, ValueType, 3> AIAO(runs, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 4){
-        benchmark::allInAllOut<KeyType, ValueType, 4> AIAO(runs, max_key, number_of_segments, max_segment_size);
+        benchmark::allInAllOut<KeyType, ValueType, 4> AIAO(runs, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 5){
-        benchmark::allInAllOut<KeyType, ValueType, 5> AIAO(runs, max_key, number_of_segments, max_segment_size);
+        benchmark::allInAllOut<KeyType, ValueType, 5> AIAO(runs, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 6){
-        benchmark::allInAllOut<KeyType, ValueType, 6> AIAO(runs, max_key, number_of_segments, max_segment_size);
+        benchmark::allInAllOut<KeyType, ValueType, 6> AIAO(runs, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 7){
-        benchmark::allInAllOut<KeyType, ValueType, 7> AIAO(runs, max_key, number_of_segments, max_segment_size);
+        benchmark::allInAllOut<KeyType, ValueType, 7> AIAO(runs, min_key, max_key, number_of_segments, max_segment_size);
     }
 };
 
@@ -159,13 +159,13 @@ int main(int argc, char *argv[]){
     if (choose_style == "competitive") {
         if (choose_size == "small") {
             std::cout << "data_size;1" << std::endl;
-            benchmarkCompetitive<KEY_TYPE, B<1>>(runs, max_key, number_of_segments, max_segment_size, radix);
+            benchmarkCompetitive<KEY_TYPE, B<1>>(runs, min_key, max_key, number_of_segments, max_segment_size, radix);
             std::cout << "data_size;16" << std::endl;
-            benchmarkCompetitive<KEY_TYPE, B<16>>(runs, max_key, number_of_segments, max_segment_size, radix);
+            benchmarkCompetitive<KEY_TYPE, B<16>>(runs, min_key, max_key, number_of_segments, max_segment_size, radix);
             std::cout << "data_size;64" << std::endl;
-            benchmarkCompetitive<KEY_TYPE, B<64>>(runs, max_key, number_of_segments, max_segment_size, radix);
+            benchmarkCompetitive<KEY_TYPE, B<64>>(runs, min_key, max_key, number_of_segments, max_segment_size, radix);
             std::cout << "data_size;128" << std::endl;
-            benchmarkCompetitive<KEY_TYPE, B<128>>(runs, max_key, number_of_segments, max_segment_size, radix);
+            benchmarkCompetitive<KEY_TYPE, B<128>>(runs, min_key, max_key, number_of_segments, max_segment_size, radix);
             /*
             std::cout << "data_size;1" << std::endl;
             benchmarkCompetitiveInterrupted<KEY_TYPE, B<1>>(runs, min_key, max_key, number_of_segments, max_segment_size, radix);
@@ -180,11 +180,11 @@ int main(int argc, char *argv[]){
 
         if (choose_size == "large") {
             std::cout << "data_size;256" << std::endl;
-            benchmarkCompetitive<KEY_TYPE, B<256>>(runs, max_key, number_of_segments, max_segment_size, radix);
+            benchmarkCompetitive<KEY_TYPE, B<256>>(runs, min_key, max_key, number_of_segments, max_segment_size, radix);
             std::cout << "data_size;512" << std::endl;
-            benchmarkCompetitive<KEY_TYPE, B<512>>(runs, max_key, number_of_segments, max_segment_size, radix);
+            benchmarkCompetitive<KEY_TYPE, B<512>>(runs, min_key, max_key, number_of_segments, max_segment_size, radix);
             std::cout << "data_size;1024" << std::endl;
-            benchmarkCompetitive<KEY_TYPE, B<1024>>(runs, max_key, number_of_segments, max_segment_size, radix);
+            benchmarkCompetitive<KEY_TYPE, B<1024>>(runs, min_key, max_key, number_of_segments, max_segment_size, radix);
             /*
             std::cout << "data_size;256" << std::endl;
             benchmarkCompetitiveInterrupted<KEY_TYPE, B<256>>(runs, min_key, max_key, number_of_segments, max_segment_size, radix);

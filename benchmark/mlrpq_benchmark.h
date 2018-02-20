@@ -107,6 +107,7 @@ namespace benchmark {
     private:
         // passed by constructor
         key_type runs_;
+        key_type min_key_;
         key_type max_key_;
         key_type max_segment_size_;
         key_type number_of_segments_;
@@ -122,14 +123,14 @@ namespace benchmark {
 
 
     public:
-        allInAllOut(key_type runs, key_type max_key, key_type number_of_segments, key_type max_segment_size) :
+        allInAllOut(key_type runs, key_type min_key, key_type max_key, key_type number_of_segments, key_type max_segment_size) :
                 runs_(runs),
+                min_key_(min_key),
                 max_key_(max_key),
                 max_segment_size_(max_segment_size),
                 number_of_segments_(number_of_segments),
-                current_segment_start_(size_t(0))
+                current_segment_start_(min_key)
         {
-
             for (int i = 1; i <= runs_; i++) {
                 // instantiate datastructures
                 mlrpq_type mlrpq;
@@ -139,15 +140,9 @@ namespace benchmark {
                                                         (mem_for_pools / 2) / block_type::raw_size);
                 stxxl_pq_type stxxl_pq(pool);
 
-                double step_seed = 123456 * i; // change with chrono thing for random version
 
-                // generate segment lengths
-                //random_segment_sizes_ = {};
-                //generateStepSegments(step_seed);
-                // generate new random keys
-                //auto step_numbers = generateStepNumbers(step_seed);
-                // start benchmarking
-                std::cout << "code;AllInAllOutCompetitive" << std::endl;
+                double step_seed = 123456 * i; // change with chrono thing for random version
+                std::cout << "code;CompetitiveAllInAllOut" << std::endl;
                 std::cout << "step_begin;" << i << std::endl;
                 execute(mlrpq, stxxl_pq, step_seed);
                 std::cout << "step_end;" << i << std::endl;
@@ -158,52 +153,54 @@ namespace benchmark {
     private:
 
         void execute(mlrpq_type& mlrpq, stxxl_pq_type& stxxl_pq, double step_seed){
-                stxxl::timer mlrpq_watch(false);
-                stxxl::timer stxxl_pq_watch(false);
 
-                key_type size = 0;
+            stxxl::timer mlrpq_watch(false);
+            stxxl::timer stxxl_pq_watch(false);
 
-                // generate new segment sizes
-                NumberGenerator<key_type> gen_seg_sizes(1, max_segment_size_, number_of_segments_, step_seed);
-                auto random_segment_sizes = gen_seg_sizes.getGeneratedNumbers();
+            key_type size = 0;
 
-                std::for_each(random_segment_sizes.begin(), random_segment_sizes.end(), [&] (int n) {
-                    size += n;
-                });
+            // generate new segment sizes
+            NumberGenerator<key_type> gen_seg_sizes(1, max_segment_size_, number_of_segments_, step_seed);
+            auto random_segment_sizes = gen_seg_sizes.getGeneratedNumbers();
 
-                current_segment_start_ = size_t(0);
-                
-                //replace with runStxxlPQ(stxxl_pq_type& stxxl_pq, stxxl::timer &mlrpq_watch, double step_seed, const std::vector<KeyType>& random_segment_sizes, const key_type size)
-                stxxl::stats_data s1 = *stxxl::stats::get_instance();
-                runStxxlPQ(stxxl_pq, stxxl_pq_watch, step_seed, random_segment_sizes, size);
-                stxxl::stats_data stxxl_pq_iostat = stxxl::stats_data(*stxxl::stats::get_instance()) - s1;
-                
-                current_segment_start_ = size_t(0);
-                
-                //replace with runMLRPQ(mlrpq_type& mlrpq, stxxl::timer &stxxl_pq_watch, double step_seed, const std::vector<KeyType>& random_segment_sizes, const key_type size)
-                stxxl::stats_data s2 = *stxxl::stats::get_instance();
-                runMLRPQ(mlrpq, mlrpq_watch, step_seed, random_segment_sizes, size);
-                stxxl::stats_data mlrpq_iostat = stxxl::stats_data(*stxxl::stats::get_instance()) - s2;
+            std::for_each(random_segment_sizes.begin(), random_segment_sizes.end(), [&] (key_type n) {
+                size += n;
+            });
 
-                //TODO add validation procedure here
+            current_segment_start_ = min_key_;
 
-                // output stats
-                std::cout << "mlrpq_reads;" << mlrpq_iostat.get_reads() << std::endl;
-                std::cout << "mlrpq_writes;" << mlrpq_iostat.get_writes() << std::endl;
-                std::cout << "stxxl_pq_reads;" << stxxl_pq_iostat.get_reads() << std::endl;
-                std::cout << "stxxl_pq_writes;" << stxxl_pq_iostat.get_writes() << std::endl;
-                std::cout << "generated;" << size << std::endl;
-                std::cout << "stxxl_pq_time;" << stxxl_pq_watch.mseconds() << std::endl;
-                std::cout << "mlrpq_time;" << mlrpq_watch.mseconds() << std::endl;
-            }
+            stxxl::stats_data s1 = *stxxl::stats::get_instance();
+            runStxxlPQ(stxxl_pq, stxxl_pq_watch, step_seed, random_segment_sizes, size);
+            stxxl::stats_data stxxl_pq_iostat = stxxl::stats_data(*stxxl::stats::get_instance()) - s1;
 
-        std::vector<key_type> runMLRPQ(mlrpq_type& mlrpq, stxxl::timer& mlrpq_watch, double step_seed, const std::vector<KeyType>& random_segment_sizes, const key_type size){
+            current_segment_start_ = min_key_;
+
+            stxxl::stats_data s2 = *stxxl::stats::get_instance();
+            runMLRPQ(mlrpq, mlrpq_watch, step_seed, random_segment_sizes, size);
+            stxxl::stats_data mlrpq_iostat = stxxl::stats_data(*stxxl::stats::get_instance()) - s2;
+
+            // validation procedure, reset first_push flag and current_segment_start_
+            current_segment_start_ = min_key_;
+            mlrpq.reset();
+            validate(mlrpq, stxxl_pq, step_seed, random_segment_sizes, size);
+
+            // output stats
+            std::cout << "mlrpq_reads;" << mlrpq_iostat.get_reads() << std::endl;
+            std::cout << "mlrpq_writes;" << mlrpq_iostat.get_writes() << std::endl;
+            std::cout << "stxxl_pq_reads;" << stxxl_pq_iostat.get_reads() << std::endl;
+            std::cout << "stxxl_pq_writes;" << stxxl_pq_iostat.get_writes() << std::endl;
+            std::cout << "generated;" << size << std::endl;
+            std::cout << "stxxl_pq_time;" << stxxl_pq_watch.mseconds() << std::endl;
+            std::cout << "mlrpq_time;" << mlrpq_watch.mseconds() << std::endl;
+        }
+
+        void runMLRPQ(mlrpq_type& mlrpq, stxxl::timer &mlrpq_watch, double step_seed, const std::vector<key_type>& random_segment_sizes, const key_type size){
             for (int i = 0; i < number_of_segments_; i++){
                 NumberGenerator<key_type> gen(current_segment_start_, current_segment_start_ + max_key_, random_segment_sizes[i], step_seed);
                 current_segment_start_ = gen.getMaxGenerated();
                 auto generated_numbers = gen.getGeneratedNumbers();
                 mlrpq_watch.start();
-                for (int i = 0; i < generated_numbers.size(); i++){
+                for (int j = 0; j < generated_numbers.size(); j++){
                     mlrpq.push(generated_numbers[i], val);
                 }
                 mlrpq_watch.stop();
@@ -217,27 +214,14 @@ namespace benchmark {
             }
             mlrpq_watch.stop();
         }
-        /* USE THIS for benchmarking in IM against standard PQ
-        std::vector<key_type> pqAllInAllOut(pq_type& pq, std::vector<key_type> step_numbers_){
-            std::vector<key_type> tmp_res;
-            for (int i = 0; i < step_numbers_.size(); i++){
-                pq.push({step_numbers_[i], val});
-            }
-            while(!pq.empty()){
-                tmp_res.push_back(pq.top().first);
-                pq.pop();
-            }
-            return tmp_res;
-        }
-        */
-        std::vector<key_type> runStxxlPQ(stxxl_pq_type& stxxl_pq, stxxl::timer& stxxl_pq_watch, double step_seed, const std::vector<KeyType>& random_segment_sizes, const key_type size){
-            std::cout << "entered run stxxlpq" << std::endl
+
+        void runStxxlPQ(stxxl_pq_type& stxxl_pq, stxxl::timer &stxxl_pq_watch, double step_seed, const std::vector<key_type>& random_segment_sizes, const key_type size){
             for (int i = 0; i < number_of_segments_; i++){
                 NumberGenerator<key_type> gen(current_segment_start_, current_segment_start_ + max_key_, random_segment_sizes[i], step_seed);
                 current_segment_start_ = gen.getMaxGenerated();
                 auto generated_numbers = gen.getGeneratedNumbers();
                 stxxl_pq_watch.start();
-                for (int i = 0; i < generated_numbers.size(); i++){
+                for (int j = 0; j < generated_numbers.size(); j++){
                     stxxl_pq.push({generated_numbers[i], val});
                 }
                 stxxl_pq_watch.stop();
@@ -246,12 +230,43 @@ namespace benchmark {
             // pop all
             stxxl_pq_watch.start();
             for (int i = 0; i < size; i++){
-                std::cout << "pop #: " << i << "of " << size << std::endl;
                 dummy_ += stxxl_pq.top().first;
                 stxxl_pq.pop();
             }
             stxxl_pq_watch.stop();
         }
+
+        void validate(mlrpq_type& mlrpq, stxxl_pq_type& stxxl_pq, double step_seed, const std::vector<key_type>& random_segment_sizes, const key_type size){
+            key_type tmp_stxxl_pq, tmp_mlrpq;
+
+            for (int i = 0; i < number_of_segments_; i++){
+                NumberGenerator<key_type> gen(current_segment_start_, current_segment_start_ + max_key_, random_segment_sizes[i], step_seed);
+                current_segment_start_ = gen.getMaxGenerated();
+                auto generated_numbers = gen.getGeneratedNumbers();
+                for (int j = 0; j < generated_numbers.size(); j++){
+                    mlrpq.push(generated_numbers[i], val);
+                    stxxl_pq.push({generated_numbers[i], val});
+                }
+            }
+
+            // pop all
+            for (int i = 0; i < size; i++){
+                tmp_mlrpq = mlrpq.top().first;
+                tmp_stxxl_pq = stxxl_pq.top().first;
+                if (!(tmp_stxxl_pq == tmp_mlrpq)){
+                    std::cout << "mlrpq: " << tmp_mlrpq << " stxxlpq: " << tmp_stxxl_pq << std::endl;
+                    //std::cout << "[ERROR] result checking failed" << std::endl;
+                }
+                mlrpq.pop();
+                stxxl_pq.pop();
+            }
+            assert(stxxl_pq.empty());
+            assert(mlrpq.empty());
+        }
+
+
+
+
     };
 
     template <typename KeyType, typename ValueType, size_t RADIX_BITS_>

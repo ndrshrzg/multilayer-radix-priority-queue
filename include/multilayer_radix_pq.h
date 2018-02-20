@@ -375,6 +375,13 @@ namespace multilayer_radix_pq {
 
         void reset() {
             first_push_flag_ = true;
+            reseeding_n_flag_ = false;
+            last_minimum_ = std::numeric_limits<key_type>::min();
+            initializeBucketMinima(no_of_arrays_);
+            initializeBitFields(no_of_arrays_);
+            N_bucket_minimum_ = {std::numeric_limits<key_type>::max(), {}};
+            current_minimum_index_.first = -1;
+            current_minimum_index_.second = -1;
         }
 
     }; // end class multilayer_radix_pq
