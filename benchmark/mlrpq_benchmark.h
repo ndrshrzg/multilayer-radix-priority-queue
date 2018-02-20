@@ -101,7 +101,7 @@ namespace benchmark {
         // data structures being benchmarked
         using mlrpq_type = multilayer_radix_pq::multilayer_radix_pq<key_type, value_type, RADIX_BITS_>;
         //using pq_type = std::priority_queue<std::pair<key_type, value_type>, std::vector<std::pair<key_type, value_type>>, CompareKey<key_type, value_type>>;
-        typedef typename stxxl::PRIORITY_QUEUE_GENERATOR<std::pair<key_type, value_type>, CompareKey<key_type, value_type>, 64*1024*1024, 1024*1024>::result stxxl_pq_type;
+        typedef typename stxxl::PRIORITY_QUEUE_GENERATOR<std::pair<key_type, value_type>, CompareKey<key_type, value_type>, 16*1024*1024, 1024*1024>::result stxxl_pq_type;
         typedef typename stxxl_pq_type::block_type block_type;
 
     private:
@@ -114,10 +114,7 @@ namespace benchmark {
         key_type current_segment_start_;
 
         // internals
-        std::vector<key_type> step_numbers_;
-        key_type total_count_;
         value_type val;
-        std::vector<key_type> random_segment_sizes_;
 
         key_type dummy_; //dummy value so pop operations are not optimized away
 
@@ -143,6 +140,7 @@ namespace benchmark {
 
                 double step_seed = 123456 * i; // change with chrono thing for random version
                 std::cout << "code;CompetitiveAllInAllOut" << std::endl;
+                std::cout << "radix;" << RADIX_BITS_ << std::endl;
                 std::cout << "step_begin;" << i << std::endl;
                 execute(mlrpq, stxxl_pq, step_seed);
                 std::cout << "step_end;" << i << std::endl;
@@ -167,6 +165,10 @@ namespace benchmark {
                 size += n;
             });
 
+            // validation procedure, reset first_push flag and current_segment_start_
+            current_segment_start_ = min_key_;
+            validate(mlrpq, stxxl_pq, step_seed, random_segment_sizes, size);
+
             current_segment_start_ = min_key_;
 
             stxxl::stats_data s1 = *stxxl::stats::get_instance();
@@ -174,15 +176,12 @@ namespace benchmark {
             stxxl::stats_data stxxl_pq_iostat = stxxl::stats_data(*stxxl::stats::get_instance()) - s1;
 
             current_segment_start_ = min_key_;
+            mlrpq.reset();
 
             stxxl::stats_data s2 = *stxxl::stats::get_instance();
             runMLRPQ(mlrpq, mlrpq_watch, step_seed, random_segment_sizes, size);
             stxxl::stats_data mlrpq_iostat = stxxl::stats_data(*stxxl::stats::get_instance()) - s2;
 
-            // validation procedure, reset first_push flag and current_segment_start_
-            current_segment_start_ = min_key_;
-            mlrpq.reset();
-            validate(mlrpq, stxxl_pq, step_seed, random_segment_sizes, size);
 
             // output stats
             std::cout << "mlrpq_reads;" << mlrpq_iostat.get_reads() << std::endl;
@@ -249,13 +248,19 @@ namespace benchmark {
                 }
             }
 
+            key_type tmp = std::numeric_limits<key_type>::min();
+
             // pop all
             for (int i = 0; i < size; i++){
                 tmp_mlrpq = mlrpq.top().first;
                 tmp_stxxl_pq = stxxl_pq.top().first;
+                assert(tmp_mlrpq >= tmp);
+                assert(tmp_stxxl_pq >= tmp);
+
+                tmp = tmp_mlrpq;
+
                 if (!(tmp_stxxl_pq == tmp_mlrpq)){
-                    std::cout << "mlrpq: " << tmp_mlrpq << " stxxlpq: " << tmp_stxxl_pq << std::endl;
-                    //std::cout << "[ERROR] result checking failed" << std::endl;
+                    std::cout << "[ERROR] result checking failed" << std::endl;
                 }
                 mlrpq.pop();
                 stxxl_pq.pop();
@@ -474,7 +479,7 @@ namespace benchmark {
         // data structures being benchmarked
         using mlrpq_type = multilayer_radix_pq::multilayer_radix_pq<key_type, value_type, RADIX_BITS_>;
         // stxxl_pq used to validate results
-        typedef typename stxxl::PRIORITY_QUEUE_GENERATOR<std::pair<key_type, value_type>, CompareKey<key_type, value_type>, 64*1024*1024, 1024*1024>::result stxxl_pq_type;
+        typedef typename stxxl::PRIORITY_QUEUE_GENERATOR<std::pair<key_type, value_type>, CompareKey<key_type, value_type>, 16*1024*1024, 1024*1024>::result stxxl_pq_type;
         typedef typename stxxl_pq_type::block_type block_type;
 
 
@@ -599,7 +604,7 @@ namespace benchmark {
 
         using mlrpq_type = multilayer_radix_pq::multilayer_radix_pq<key_type, value_type, RADIX_BITS_>;
         // stxxl_pq used to validate results
-        typedef typename stxxl::PRIORITY_QUEUE_GENERATOR<std::pair<key_type, value_type>, CompareKey<key_type, value_type>, 64*1024*1024, 1024*1024>::result stxxl_pq_type;
+        typedef typename stxxl::PRIORITY_QUEUE_GENERATOR<std::pair<key_type, value_type>, CompareKey<key_type, value_type>, 16*1024*1024, 1024*1024>::result stxxl_pq_type;
         typedef typename stxxl_pq_type::block_type block_type;
 
     private:
