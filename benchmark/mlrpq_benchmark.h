@@ -139,6 +139,9 @@ namespace benchmark {
 
 
                 double step_seed = 123456 * i; // change with chrono thing for random version
+                //double step_seed = std::chrono::steady_clock::now().time_since_epoch().count();
+
+
                 std::cout << "code;competitiveAllInAllOut" << std::endl;
                 std::cout << "radix;" << RADIX_BITS_ << std::endl;
                 std::cout << "step_begin;" << i << std::endl;
@@ -326,6 +329,7 @@ namespace benchmark {
                 stxxl_pq_type stxxl_pq(pool);
 
                 double step_seed = 123456 * i;
+                //double step_seed = std::chrono::steady_clock::now().time_since_epoch().count();
 
                 std::cout << "code;competitiveAllInAllOutInterrupted" << std::endl;
                 std::cout << "radix;" << RADIX_BITS_ << std::endl;
@@ -533,6 +537,7 @@ namespace benchmark {
                 stxxl_pq_type stxxl_pq(pool);
 
                 double step_seed = 123456 * i;
+                //double step_seed = std::chrono::steady_clock::now().time_since_epoch().count();
 
                 std::cout << "code;mlrpqAllInAllOut" << std::endl;
                 std::cout << "radix;" << RADIX_BITS_ << std::endl;
@@ -677,6 +682,7 @@ namespace benchmark {
                 stxxl_pq_type stxxl_pq(pool);
 
                 double step_seed = 123456 * i;
+                //double step_seed = std::chrono::steady_clock::now().time_since_epoch().count();
 
                 std::cout << "code;mlrpqAllInAllOutInterrupted" << std::endl;
                 std::cout << "radix;" << RADIX_BITS_ << std::endl;
