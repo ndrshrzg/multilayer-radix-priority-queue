@@ -96,8 +96,8 @@ namespace multilayer_radix_pq {
         using value_type = ValueType;
         using pair_type = std::pair<key_type, value_type>;
         //using block_type = std::queue<std::pair<key_type, value_type>>;
-        //static constexpr auto block_size = size_t(1) << 18; // limit memory
-        using block_type = stxxl::queue<std::pair<key_type, value_type>>;
+        static constexpr auto block_size = size_t(1) << 18; // limit memory
+        using block_type = stxxl::queue<std::pair<key_type, value_type>, block_size>;
 
     private:
         static constexpr size_t radix_ = size_t(1) << RADIX_BITS;
@@ -382,6 +382,7 @@ namespace multilayer_radix_pq {
             N_bucket_minimum_ = {std::numeric_limits<key_type>::max(), {}};
             current_minimum_index_.first = -1;
             current_minimum_index_.second = -1;
+            last_minimum_ = std::numeric_limits<key_type>::min();
         }
 
     }; // end class multilayer_radix_pq

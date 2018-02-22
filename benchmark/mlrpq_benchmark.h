@@ -128,23 +128,23 @@ namespace benchmark {
                 number_of_segments_(number_of_segments),
                 current_segment_start_(min_key)
         {
-            for (int i = 1; i <= runs_; i++) {
-                // instantiate datastructures
-                mlrpq_type mlrpq;
-                //pq_type pq;
-                const unsigned int mem_for_pools = 16 * 1024 * 1024;
-                stxxl::read_write_pool<block_type> pool((mem_for_pools / 2) / block_type::raw_size,
-                                                        (mem_for_pools / 2) / block_type::raw_size);
-                stxxl_pq_type stxxl_pq(pool);
+            // instantiate datastructures
+            mlrpq_type mlrpq;
+            //pq_type pq;
+            const unsigned int mem_for_pools = 16 * 1024 * 1024;
+            stxxl::read_write_pool<block_type> pool((mem_for_pools / 2) / block_type::raw_size,
+                                                    (mem_for_pools / 2) / block_type::raw_size);
+            stxxl_pq_type stxxl_pq(pool);
 
 
-                double step_seed = 123456 * i; // change with chrono thing for random version
-                std::cout << "code;competitiveAllInAllOut" << std::endl;
-                std::cout << "radix;" << RADIX_BITS_ << std::endl;
-                std::cout << "step_begin;" << i << std::endl;
-                execute(mlrpq, stxxl_pq, step_seed);
-                std::cout << "step_end;" << i << std::endl;
-            }
+            double step_seed = 123456 * runs_; // change with chrono thing for random version
+               
+            std::cout << "code;competitiveAllInAllOut" << std::endl;
+            std::cout << "radix;" << RADIX_BITS_ << std::endl;
+            std::cout << "step_begin;" << runs_ << std::endl;
+            execute(mlrpq, stxxl_pq, step_seed);
+            std::cout << "step_end;" << runs_ << std::endl;
+            
 
         };
 
@@ -164,24 +164,20 @@ namespace benchmark {
             std::for_each(random_segment_sizes.begin(), random_segment_sizes.end(), [&] (key_type n) {
                 size += n;
             });
+    
+            fill(mlrpq, stxxl_pq, step_seed);
 
-            // validation procedure, reset first_push flag and current_segment_start_
-            //current_segment_start_ = min_key_;
-            //validate(mlrpq, stxxl_pq, step_seed, random_segment_sizes, size);
-
-            current_segment_start_ = min_key_;
+	    current_segment_start_ = min_key_;
 
             stxxl::stats_data s1 = *stxxl::stats::get_instance();
             runStxxlPQ(stxxl_pq, stxxl_pq_watch, step_seed, random_segment_sizes, size);
             stxxl::stats_data stxxl_pq_iostat = stxxl::stats_data(*stxxl::stats::get_instance()) - s1;
 
             current_segment_start_ = min_key_;
-            mlrpq.reset();
 
             stxxl::stats_data s2 = *stxxl::stats::get_instance();
             runMLRPQ(mlrpq, mlrpq_watch, step_seed, random_segment_sizes, size);
             stxxl::stats_data mlrpq_iostat = stxxl::stats_data(*stxxl::stats::get_instance()) - s2;
-
 
             // output stats
             std::cout << "mlrpq_reads;" << mlrpq_iostat.get_reads() << std::endl;
@@ -235,42 +231,16 @@ namespace benchmark {
             stxxl_pq_watch.stop();
         }
 
-        void validate(mlrpq_type& mlrpq, stxxl_pq_type& stxxl_pq, double step_seed, const std::vector<key_type>& random_segment_sizes, const key_type size){
-            key_type tmp_stxxl_pq, tmp_mlrpq;
 
-            for (int i = 0; i < number_of_segments_; i++){
-                NumberGenerator<key_type> gen(current_segment_start_, current_segment_start_ + max_key_, random_segment_sizes[i], step_seed);
-                current_segment_start_ = gen.getMaxGenerated();
-                auto generated_numbers = gen.getGeneratedNumbers();
-                for (int j = 0; j < generated_numbers.size(); j++){
-                    mlrpq.push(generated_numbers[i], val);
-                    stxxl_pq.push({generated_numbers[i], val});
-                }
-            }
-
-            key_type tmp = std::numeric_limits<key_type>::min();
-
-            // pop all
-            for (int i = 0; i < size; i++){
-                tmp_mlrpq = mlrpq.top().first;
-                tmp_stxxl_pq = stxxl_pq.top().first;
-                assert(tmp_mlrpq >= tmp);
-                assert(tmp_stxxl_pq >= tmp);
-
-                tmp = tmp_mlrpq;
-
-                if (!(tmp_stxxl_pq == tmp_mlrpq)){
-                    std::cout << "[ERROR] result checking failed" << std::endl;
-                }
-                mlrpq.pop();
-                stxxl_pq.pop();
-            }
-            assert(stxxl_pq.empty());
-            assert(mlrpq.empty());
-        }
-
-
-
+        void fill(mlrpq_type& mlrpq, stxxl_pq_type& stxxl_pq, double step_seed){
+            uint64_t size = size_t(1) << 25;
+	    NumberGenerator<key_type> gen_fill(min_key_, max_key_, size, step_seed);
+	    auto generated_fill_numbers = gen_fill.getGeneratedNumbers(); 
+	    for (int i = 0; i < generated_fill_numbers.size(); i++){
+		mlrpq.push(generated_fill_numbers[i], val);
+		stxxl_pq.push({generated_fill_numbers[i], val});
+	    }
+	}
 
     };
 
@@ -317,22 +287,21 @@ namespace benchmark {
                 dummy_(std::numeric_limits<key_type>::min())
         {
             // initialize result vectors
-            for (int i = 1; i <= runs_; i++){
-                // construct datastructures to pass them
-                mlrpq_type mlrpq;
-                const unsigned int mem_for_pools = 16 * 1024 * 1024;
-                stxxl::read_write_pool<block_type> pool((mem_for_pools / 2) / block_type::raw_size,
-                                                        (mem_for_pools / 2) / block_type::raw_size);
-                stxxl_pq_type stxxl_pq(pool);
+            // construct datastructures to pass them
+            mlrpq_type mlrpq;
+            const unsigned int mem_for_pools = 16 * 1024 * 1024;
+            stxxl::read_write_pool<block_type> pool((mem_for_pools / 2) / block_type::raw_size,
+                                                    (mem_for_pools / 2) / block_type::raw_size);
+            stxxl_pq_type stxxl_pq(pool);
+            
+            double step_seed = 123456 * runs_;
 
-                double step_seed = 123456 * i;
-
-                std::cout << "code;competitiveAllInAllOutInterrupted" << std::endl;
-                std::cout << "radix;" << RADIX_BITS_ << std::endl;
-                std::cout << "step_begin;" << i << std::endl;
-                execute(mlrpq, stxxl_pq, step_seed);
-                std::cout << "step_end;" << i << std::endl;
-            }
+            std::cout << "code;competitiveAllInAllOutInterrupted" << std::endl;
+            std::cout << "radix;" << RADIX_BITS_ << std::endl;
+            std::cout << "step_begin;" << runs_ << std::endl;
+            execute(mlrpq, stxxl_pq, step_seed);
+            std::cout << "step_end;" << runs_ << std::endl;
+            
         }
 
     private:
@@ -354,6 +323,9 @@ namespace benchmark {
             std::for_each(random_segment_sizes.begin(), random_segment_sizes.end(), [&] (int n) {
                 size += n;
             });
+            
+            fill(mlrpq, stxxl_pq, step_seed);
+
 
             stxxl::stats_data mlrpq_iostat_start = *stxxl::stats::get_instance();
             // iterate through segments and push random numbers, pop according number of elements
@@ -404,6 +376,8 @@ namespace benchmark {
             stxxl_pq_watch.stop();
 
             stxxl::stats_data stxxl_pq_iostat = stxxl::stats_data(*stxxl::stats::get_instance()) - stxxl_pq_iostat_start;
+            
+	    //empty(mlrpq, stxxl_pq);
 
             std::cout << "mlrpq_reads;" << mlrpq_iostat.get_reads() << std::endl;
             std::cout << "mlrpq_writes;" << mlrpq_iostat.get_writes() << std::endl;
@@ -413,28 +387,6 @@ namespace benchmark {
             std::cout << "mlrpq_time;" << mlrpq_watch.mseconds() << std::endl;
             std::cout << "stxxl_pq_time;" << stxxl_pq_watch.mseconds() << std::endl;
             // end of benchmarking procedure
-
-            // validation procedure needs to be refactored out of the execute method because the stxxl_pq throws weird
-            // assertion errors
-            // calling the validation method withouth benchmarking the stxxl pq before works perfectly fine
-            // (see mlrpq only benchmarks)
-            /*
-            mlrpq.reset();
-            popped_overall = size_t(0);
-            current_pushed_max_ = min_key_;
-            // validation of segments
-            for (int i = 0; i < number_of_segments_; i++){
-                NumberGenerator<key_type> gen(current_pushed_max_, current_pushed_max_ + max_key_, random_segment_sizes[i], step_seed);
-                auto segment_numbers = gen.getGeneratedNumbers();
-                auto count_numbers_segment_popped = (random_segment_sizes[i] + step_divisors[i] - 1) / step_divisors[i]; // ceil segment_size/divisor
-                current_pushed_max_ = gen.getMaxGenerated();
-                validate(mlrpq, stxxl_pq, segment_numbers, count_numbers_segment_popped);
-                popped_overall += count_numbers_segment_popped;
-            }
-            segment_numbers_empty;
-            // validate remaining
-            validate(mlrpq, stxxl_pq, segment_numbers_empty, size-popped_overall);
-            */
 
         }
 
@@ -459,30 +411,16 @@ namespace benchmark {
                 stxxl_pq.pop();
             }
         };
-
-        void validate(mlrpq_type& mlrpq, stxxl_pq_type& stxxl_pq, std::vector<key_type>& segment_numbers, size_t count_numbers_segment_popped){
-            key_type mlrpq_tmp;
-            key_type stxxl_pq_tmp;
-
-            for (int i = 0; i < segment_numbers.size(); i++) {
-                mlrpq.push(segment_numbers[i], val);
-                stxxl_pq.push({segment_numbers[i], val});
-            }
-
-            for (int i = 0; i < count_numbers_segment_popped; i++) {
-                mlrpq_tmp = mlrpq.top().first;
-                stxxl_pq_tmp = stxxl_pq.top().first;
-
-                if (mlrpq_tmp != stxxl_pq_tmp){
-                    std::cout << "[ERROR] result checking failed" << std::endl;
-                }
-
-                mlrpq.pop();
-                stxxl_pq.pop();
-            }
-
-        }
-
+        
+        void fill(mlrpq_type& mlrpq, stxxl_pq_type& stxxl_pq, double step_seed){
+            uint64_t size = size_t(1) << 25;
+	    NumberGenerator<key_type> gen_fill(current_pushed_max_, current_pushed_max_ + max_key_, size, step_seed);
+	    auto generated_fill_numbers = gen_fill.getGeneratedNumbers(); 
+	    for (int i = 0; i < generated_fill_numbers.size(); i++){
+		mlrpq.push(generated_fill_numbers[i], val);
+		stxxl_pq.push({generated_fill_numbers[i], val});
+	    }
+	}
 
     };
 
@@ -524,22 +462,21 @@ namespace benchmark {
                 dummy_(std::numeric_limits<key_type>::min())
         {
 
-            for (int i = 1; i <= runs_; i++) {
-                mlrpq_type mlrpq;
+            mlrpq_type mlrpq;
 
-                const unsigned int mem_for_pools = 16 * 1024 * 1024;
-                stxxl::read_write_pool<block_type> pool((mem_for_pools / 2) / block_type::raw_size,
-                                                        (mem_for_pools / 2) / block_type::raw_size);
-                stxxl_pq_type stxxl_pq(pool);
+            const unsigned int mem_for_pools = 16 * 1024 * 1024;
+            stxxl::read_write_pool<block_type> pool((mem_for_pools / 2) / block_type::raw_size,
+                                                    (mem_for_pools / 2) / block_type::raw_size);
+            stxxl_pq_type stxxl_pq(pool);
 
-                double step_seed = 123456 * i;
+            double step_seed = 123456 * runs_;
 
-                std::cout << "code;mlrpqAllInAllOut" << std::endl;
-                std::cout << "radix;" << RADIX_BITS_ << std::endl;
-                std::cout << "step_begin;" << i << std::endl;
-                execute(mlrpq, stxxl_pq, step_seed);
-                std::cout << "step_end;" << i << std::endl;
-            }
+            std::cout << "code;mlrpqAllInAllOut" << std::endl;
+            std::cout << "radix;" << RADIX_BITS_ << std::endl;
+            std::cout << "step_begin;" << runs_ << std::endl;
+            execute(mlrpq, stxxl_pq, step_seed);
+            std::cout << "step_end;" << runs_ << std::endl;
+            
         };
 
     private:
@@ -556,12 +493,16 @@ namespace benchmark {
             std::for_each(random_segment_sizes.begin(), random_segment_sizes.end(), [&] (int n) {
                 size += n;
             });
+            
+            fill(mlrpq, step_seed);
 
             // start benchmarking
             current_segment_start_ = size_t(0);
             stxxl::stats_data s = *stxxl::stats::get_instance();
             run(mlrpq, mlrpq_watch, step_seed, random_segment_sizes, size);
             stxxl::stats_data iostat = stxxl::stats_data(*stxxl::stats::get_instance()) - s;
+
+            empty(mlrpq);
 
             // validate that mlrpq returns correct array
             current_segment_start_ = size_t(0);
@@ -620,6 +561,25 @@ namespace benchmark {
             }
             mlrpq_watch.stop();
         }
+        
+        void fill(mlrpq_type& mlrpq, double step_seed){
+            uint64_t size = size_t(1) << 25;
+	    NumberGenerator<key_type> gen_fill(current_segment_start_, current_segment_start_ + max_key_, size, step_seed);
+	    auto generated_fill_numbers = gen_fill.getGeneratedNumbers(); 
+	    for (int i = 0; i < generated_fill_numbers.size(); i++){
+		mlrpq.push(generated_fill_numbers[i], val);
+	    }
+	}
+	
+	void empty(mlrpq_type& mlrpq){
+	    
+	    for (size_t i = 0; i < (size_t(1) << 25); i++){
+	        mlrpq.pop();
+	    }    
+	    while(!mlrpq.empty()){
+		mlrpq.pop();
+	    }
+	}
 
 
     };
@@ -668,22 +628,21 @@ namespace benchmark {
                                                                 dummy_(std::numeric_limits<key_type>::min())
         {
             // initialize result vectors
-            for (int i = 1; i <= runs_; i++){
-                // construct datastructures to pass them
-                mlrpq_type mlrpq;
-                const unsigned int mem_for_pools = 16 * 1024 * 1024;
-                stxxl::read_write_pool<block_type> pool((mem_for_pools / 2) / block_type::raw_size,
+            // construct datastructures to pass them
+            mlrpq_type mlrpq;
+            const unsigned int mem_for_pools = 16 * 1024 * 1024;
+            stxxl::read_write_pool<block_type> pool((mem_for_pools / 2) / block_type::raw_size,
                                                         (mem_for_pools / 2) / block_type::raw_size);
-                stxxl_pq_type stxxl_pq(pool);
+            stxxl_pq_type stxxl_pq(pool);
 
-                double step_seed = 123456 * i;
+            double step_seed = 123456 * runs_;
 
-                std::cout << "code;mlrpqAllInAllOutInterrupted" << std::endl;
-                std::cout << "radix;" << RADIX_BITS_ << std::endl;
-                std::cout << "step_begin;" << i << std::endl;
-                execute(mlrpq, stxxl_pq, step_seed);
-                std::cout << "step_end;" << i << std::endl;
-            }
+            std::cout << "code;mlrpqAllInAllOutInterrupted" << std::endl;
+            std::cout << "radix;" << RADIX_BITS_ << std::endl;
+            std::cout << "step_begin;" << runs_ << std::endl;
+            execute(mlrpq, stxxl_pq, step_seed);
+            std::cout << "step_end;" << runs_ << std::endl;
+        
         }
 
     private:
@@ -704,7 +663,9 @@ namespace benchmark {
             std::for_each(random_segment_sizes.begin(), random_segment_sizes.end(), [&] (int n) {
                 size += n;
             });
-
+            
+            fill(mlrpq, step_seed);
+            
             stxxl::stats_data iostat_start = *stxxl::stats::get_instance();
             // iterate through segments and push random numbers, pop according number of elements
             for (int i = 0; i < number_of_segments_; i++){
@@ -735,6 +696,7 @@ namespace benchmark {
             std::cout << "writes;" << iostat.get_writes() << std::endl;
             // end of benchmarking procedure
 
+            empty(mlrpq);
             mlrpq.reset();
             popped_overall = size_t(0);
             current_pushed_max_ = min_key_;
@@ -764,6 +726,26 @@ namespace benchmark {
                 mlrpq.pop();
             }
         };
+        
+        void fill(mlrpq_type& mlrpq, double step_seed){
+            uint64_t size = size_t(1) << 25;
+	    NumberGenerator<key_type> gen_fill(current_pushed_max_, current_pushed_max_ + max_key_, size, step_seed);
+	    auto generated_fill_numbers = gen_fill.getGeneratedNumbers(); 
+	    for (int i = 0; i < generated_fill_numbers.size(); i++){
+		mlrpq.push(generated_fill_numbers[i], val);
+	    }
+	}
+	
+	void empty(mlrpq_type& mlrpq){
+	    
+	    for (size_t i = 0; i < (size_t(1) << 24); i++){
+	        mlrpq.pop();
+	    }    
+	    while(!mlrpq.empty()){
+		mlrpq.pop();
+	    }
+	}
+        
 
         void validate(mlrpq_type& mlrpq, stxxl_pq_type& stxxl_pq, std::vector<key_type>& segment_numbers, size_t count_numbers_segment_popped){
             key_type mlrpq_tmp;
