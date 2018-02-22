@@ -144,7 +144,6 @@ namespace benchmark {
             std::cout << "step_begin;" << runs_ << std::endl;
             execute(mlrpq, stxxl_pq, step_seed);
             std::cout << "step_end;" << runs_ << std::endl;
-            
 
         };
 
@@ -302,6 +301,7 @@ namespace benchmark {
             execute(mlrpq, stxxl_pq, step_seed);
             std::cout << "step_end;" << runs_ << std::endl;
             
+
         }
 
     private:
@@ -637,6 +637,7 @@ namespace benchmark {
 
             double step_seed = 123456 * runs_;
 
+
             std::cout << "code;mlrpqAllInAllOutInterrupted" << std::endl;
             std::cout << "radix;" << RADIX_BITS_ << std::endl;
             std::cout << "step_begin;" << runs_ << std::endl;
@@ -773,33 +774,7 @@ namespace benchmark {
     };
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }; // end namespace benchmark
-
-
-
-
-
-
 
 
 #endif //MULTILAYER_RADIX_PRIORITY_QUEUE_MLRPQ_BENCHMARK_H
