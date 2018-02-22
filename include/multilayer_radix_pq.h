@@ -368,6 +368,16 @@ namespace multilayer_radix_pq {
                 return minimum_element;
             }
         };
+        
+        const key_type top_key() const {
+            if (current_minimum_index_== std::pair<int64_t, int64_t> (-1, -1) && !n_bucket_.empty()){
+                return N_bucket_minimum_.first;
+            }
+            else{
+                const pair_type& minimum_element = bucket_minimum_[current_minimum_index_.first][current_minimum_index_.second];
+                return minimum_element.first;
+            }
+        } 
 
         bool empty() const {
             return (current_minimum_index_ == std::pair<int64_t,int64_t>(-1, -1)) && n_bucket_.empty();

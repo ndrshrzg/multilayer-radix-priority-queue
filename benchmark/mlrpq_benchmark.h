@@ -528,7 +528,7 @@ namespace benchmark {
             }
 
             for (int i = 0; i < size; i++){
-                key_type mlrpq_tmp = mlrpq.top().first;
+                key_type mlrpq_tmp = mlrpq.top_key();
                 key_type stxxl_pq_tmp = stxxl_pq.top().first;
                 if (mlrpq_tmp != stxxl_pq_tmp) {
                     std::cout << "[ERROR] result checking failed" << std::endl;
@@ -758,7 +758,7 @@ namespace benchmark {
             }
 
             for (int i = 0; i < count_numbers_segment_popped; i++) {
-                mlrpq_tmp = mlrpq.top().first;
+                mlrpq_tmp = mlrpq.top_key();
                 stxxl_pq_tmp = stxxl_pq.top().first;
 
                 if (mlrpq_tmp != stxxl_pq_tmp){
