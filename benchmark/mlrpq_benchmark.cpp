@@ -16,6 +16,11 @@ std::ostream& operator<< (std::ostream& o, const std::pair<uint64_t, B<1>>& d) {
     return o;
 };
 
+std::ostream& operator<< (std::ostream& o, const std::pair<uint64_t, B<8>>& d) {
+    o << d.first;
+    return o;
+};
+
 std::ostream& operator<< (std::ostream& o, const std::pair<uint64_t, B<16>>& d) {
     o << d.first;
     return o;
@@ -49,43 +54,43 @@ std::ostream& operator<< (std::ostream& o, const std::pair<uint64_t, B<1024>>& d
 template <typename KeyType, typename ValueType>
 void benchmarkMLRPQ(int run, KeyType min_key, KeyType max_key, KeyType number_of_segments, KeyType max_segment_size, int radix) {
     if (radix == 1){
-        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 1> mlrpqAIAO(run, max_key, number_of_segments, max_segment_size);
+        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 1> mlrpqAIAO(run, min_key, max_key, number_of_segments, max_segment_size);
         benchmark::mlrpqOnlyAllInAllOutInterrupted<KeyType , ValueType, 1> mlrpqOnlyInterrutped(run, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 2){
-        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 2> mlrpqAIAO(run, max_key, number_of_segments, max_segment_size);
+        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 2> mlrpqAIAO(run, min_key, max_key, number_of_segments, max_segment_size);
         benchmark::mlrpqOnlyAllInAllOutInterrupted<KeyType , ValueType, 2> mlrpqOnlyInterrutped(run, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 3){
-        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 3> mlrpqAIAO(run, max_key, number_of_segments, max_segment_size);
+        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 3> mlrpqAIAO(run, min_key, max_key, number_of_segments, max_segment_size);
         benchmark::mlrpqOnlyAllInAllOutInterrupted<KeyType , ValueType, 3> mlrpqOnlyInterrutped(run, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 4){
-        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 4> mlrpqAIAO(run, max_key, number_of_segments, max_segment_size);
+        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 4> mlrpqAIAO(run, min_key, max_key, number_of_segments, max_segment_size);
         benchmark::mlrpqOnlyAllInAllOutInterrupted<KeyType , ValueType, 4> mlrpqOnlyInterrutped(run, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 5){
-        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 5> mlrpqAIAO(run, max_key, number_of_segments, max_segment_size);
+        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 5> mlrpqAIAO(run, min_key, max_key, number_of_segments, max_segment_size);
         benchmark::mlrpqOnlyAllInAllOutInterrupted<KeyType , ValueType, 5> mlrpqOnlyInterrutped(run, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 6){
-        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 6> mlrpqAIAO(run, max_key, number_of_segments, max_segment_size);
+        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 6> mlrpqAIAO(run, min_key, max_key, number_of_segments, max_segment_size);
         benchmark::mlrpqOnlyAllInAllOutInterrupted<KeyType , ValueType, 6> mlrpqOnlyInterrutped(run, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 7){
-        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 7> mlrpqAIAO(run, max_key, number_of_segments, max_segment_size);
+        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 7> mlrpqAIAO(run, min_key, max_key, number_of_segments, max_segment_size);
         benchmark::mlrpqOnlyAllInAllOutInterrupted<KeyType , ValueType, 7> mlrpqOnlyInterrutped(run, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 8){
-        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 8> mlrpqAIAO(run, max_key, number_of_segments, max_segment_size);
+        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 8> mlrpqAIAO(run, min_key, max_key, number_of_segments, max_segment_size);
         benchmark::mlrpqOnlyAllInAllOutInterrupted<KeyType , ValueType, 8> mlrpqOnlyInterrutped(run, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 9){
-        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 9> mlrpqAIAO(run, max_key, number_of_segments, max_segment_size);
+        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 9> mlrpqAIAO(run, min_key, max_key, number_of_segments, max_segment_size);
         benchmark::mlrpqOnlyAllInAllOutInterrupted<KeyType , ValueType, 9> mlrpqOnlyInterrutped(run, min_key, max_key, number_of_segments, max_segment_size);
     }
     if (radix == 10){
-        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 10> mlrpqAIAO(run, max_key, number_of_segments, max_segment_size);
+        benchmark::mlrpqOnlyAllInAllOut<KeyType, ValueType, 10> mlrpqAIAO(run, min_key, max_key, number_of_segments, max_segment_size);
         benchmark::mlrpqOnlyAllInAllOutInterrupted<KeyType , ValueType, 10> mlrpqOnlyInterrutped(run, min_key, max_key, number_of_segments, max_segment_size);
     }
 };
@@ -155,7 +160,10 @@ int main(int argc, char *argv[]){
 
     int radix = atoi(argv[8]);
 
+
     if (choose_style == "single"){
+
+
         if (choose_size == "tiny"){
             for (int i = 1; i <= runs; i++){
                 std::cout << "data_size;1" << std::endl;
@@ -163,22 +171,24 @@ int main(int argc, char *argv[]){
             }
 
         }
-
+        
         if (choose_size == "small"){
             for (int i = 1; i <= runs; i++){
                 std::cout << "data_size;1" << std::endl;
                 benchmarkMLRPQ<KEY_TYPE, B<1>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
+                std::cout << "data_size;8" << std::endl;
+                benchmarkMLRPQ<KEY_TYPE, B<8>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
                 std::cout << "data_size;16" << std::endl;
                 benchmarkMLRPQ<KEY_TYPE, B<16>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
                 std::cout << "data_size;64" << std::endl;
                 benchmarkMLRPQ<KEY_TYPE, B<64>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
-                std::cout << "data_size;128" << std::endl;
-                benchmarkMLRPQ<KEY_TYPE, B<128>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
             }
         }    
         
         if (choose_size == "large"){
             for (int i = 1; i <= runs; i++){
+                std::cout << "data_size;128" << std::endl;
+                benchmarkMLRPQ<KEY_TYPE, B<128>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
                 std::cout << "data_size;256" << std::endl;
                 benchmarkMLRPQ<KEY_TYPE, B<256>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
                 std::cout << "data_size;512" << std::endl;
@@ -190,21 +200,33 @@ int main(int argc, char *argv[]){
     }
 
     if (choose_style == "competitive") {
+
+        if (choose_size == "tiny"){
+            for (int i = 1; i <= runs; i++){
+                std::cout << "data_size;1" << std::endl;
+                benchmarkCompetitive<KEY_TYPE, B<1>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
+            }
+
+        }
+        
+
         if (choose_size == "small") {
             for (int i = 1; i <= runs; i++){
                 std::cout << "data_size;1" << std::endl;
                 benchmarkCompetitive<KEY_TYPE, B<1>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
+                std::cout << "data_size;8" << std::endl;
+                benchmarkCompetitive<KEY_TYPE, B<8>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
                 std::cout << "data_size;16" << std::endl;
                 benchmarkCompetitive<KEY_TYPE, B<16>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
                 std::cout << "data_size;64" << std::endl;
                 benchmarkCompetitive<KEY_TYPE, B<64>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
-                std::cout << "data_size;128" << std::endl;
-                benchmarkCompetitive<KEY_TYPE, B<128>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
             }
         }
 
         if (choose_size == "large") {
             for (int i = 1; i <= runs; i++){
+                std::cout << "data_size;128" << std::endl;
+                benchmarkCompetitive<KEY_TYPE, B<128>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
                 std::cout << "data_size;256" << std::endl;
                 benchmarkCompetitive<KEY_TYPE, B<256>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
                 std::cout << "data_size;512" << std::endl;
@@ -213,7 +235,8 @@ int main(int argc, char *argv[]){
                 benchmarkCompetitive<KEY_TYPE, B<1024>>(i, min_key, max_key, number_of_segments, max_segment_size, radix);
             }
         }
+    
     }
-
+    
     return 0;
 }

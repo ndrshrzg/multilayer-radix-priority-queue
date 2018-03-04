@@ -88,7 +88,7 @@ namespace internal {
 
 
 namespace multilayer_radix_pq {
-    template<typename KeyType, typename ValueType, size_t RADIX_BITS, KeyType C = std::numeric_limits<KeyType>::max(), bool ALLOW_N_OVERFLOW = false>
+    template<typename KeyType, typename ValueType, size_t RADIX_BITS, KeyType C = std::numeric_limits<KeyType>::max(), KeyType known_minimum = std::numeric_limits<KeyType>::min(), bool ALLOW_N_OVERFLOW = false>
     class multilayer_radix_pq {
 
     public:
@@ -186,9 +186,9 @@ namespace multilayer_radix_pq {
             else{
                 for (; !n_bucket_.empty(); n_bucket_.pop()) {
                     std::pair<key_type, value_type> temp_element = n_bucket_.front();
+                    std::cout << temp_element.first << std::endl;
                     push(temp_element.first, temp_element.second);
                 }
-
             }
             // set reseeding from N flag to false
             reseeding_n_flag_ = false;
@@ -232,7 +232,7 @@ namespace multilayer_radix_pq {
             current_minimum_index_.first = calculated_index.first;
             current_minimum_index_.second = calculated_index.second;
         }
-
+        
 
     public:
         void push(key_type key, const value_type& val) {
@@ -241,13 +241,19 @@ namespace multilayer_radix_pq {
             // pushing 0 eg results in failure since the encoded version of 0 is a larger number than C
             // check whether monotonicity is upheld
             if(first_push_flag_){
-                auto tmp = std::numeric_limits<key_type>::min()+C;
-                last_minimum_ = std::max(key, std::numeric_limits<key_type>::min()+C) - C;
+                
+                if (known_minimum < C && known_minimum > std::numeric_limits<key_type>::min()){
+                    last_minimum_ = known_minimum;
+                }
+                else{
+                    last_minimum_ = std::max(key, std::numeric_limits<key_type>::min()+C) - C;
+                }
             }
 
             assert(key >= last_minimum_);
 
             if(!ALLOW_N_OVERFLOW){
+                //std::cout << "key\t" << key << std::endl;
                 assert((key - last_minimum_) <= C);
             }
 
